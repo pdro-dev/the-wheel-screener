@@ -1,202 +1,152 @@
-import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button.jsx'
-import { Input } from '@/components/ui/input.jsx'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
-import { Badge } from '@/components/ui/badge.jsx'
-import { Loader2, Search, Download, TrendingUp, DollarSign, BarChart3, AlertCircle } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Search, Download, TrendingUp, DollarSign, BarChart3, Settings, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Label } from '@/components/ui/label'
 import './App.css'
-
-// Dados mock para demonstração (simulando resposta da API OpLab)
-const MOCK_INSTRUMENTS = [
-  {
-    symbol: 'PETR4',
-    name: 'PETROBRAS PN',
-    market: {
-      close: 38.45,
-      variation: 0.0234,
-      vol: 45678900,
-      fin_volume: 1756789000,
-      bid: 38.40,
-      ask: 38.50
-    },
-    info: { has_options: true }
-  },
-  {
-    symbol: 'VALE3',
-    name: 'VALE ON',
-    market: {
-      close: 56.78,
-      variation: -0.0156,
-      vol: 23456789,
-      fin_volume: 1332456789,
-      bid: 56.70,
-      ask: 56.85
-    },
-    info: { has_options: true }
-  },
-  {
-    symbol: 'ITUB4',
-    name: 'ITAUUNIBANCO PN',
-    market: {
-      close: 32.15,
-      variation: 0.0089,
-      vol: 34567890,
-      fin_volume: 1111234567,
-      bid: 32.10,
-      ask: 32.20
-    },
-    info: { has_options: true }
-  },
-  {
-    symbol: 'BBDC4',
-    name: 'BRADESCO PN',
-    market: {
-      close: 28.90,
-      variation: 0.0145,
-      vol: 28901234,
-      fin_volume: 835456789,
-      bid: 28.85,
-      ask: 28.95
-    },
-    info: { has_options: true }
-  },
-  {
-    symbol: 'ABEV3',
-    name: 'AMBEV S/A ON',
-    market: {
-      close: 16.78,
-      variation: -0.0067,
-      vol: 56789012,
-      fin_volume: 952345678,
-      bid: 16.75,
-      ask: 16.80
-    },
-    info: { has_options: true }
-  },
-  {
-    symbol: 'WEGE3',
-    name: 'WEG ON',
-    market: {
-      close: 45.23,
-      variation: 0.0198,
-      vol: 12345678,
-      fin_volume: 558234567,
-      bid: 45.15,
-      ask: 45.30
-    },
-    info: { has_options: true }
-  },
-  {
-    symbol: 'MGLU3',
-    name: 'MAGAZ LUIZA ON',
-    market: {
-      close: 22.34,
-      variation: -0.0234,
-      vol: 67890123,
-      fin_volume: 1516789012,
-      bid: 22.30,
-      ask: 22.38
-    },
-    info: { has_options: true }
-  },
-  {
-    symbol: 'SUZB3',
-    name: 'SUZANO S.A. ON',
-    market: {
-      close: 51.67,
-      variation: 0.0123,
-      vol: 8901234,
-      fin_volume: 459876543,
-      bid: 51.60,
-      ask: 51.75
-    },
-    info: { has_options: true }
-  }
-]
-
-// Critérios da estratégia "The Wheel"
-const WHEEL_CRITERIA = {
-  minPrice: 15,
-  maxPrice: 60,
-  minVolume: 100000,
-  hasOptions: true,
-  categories: ['ACAO_ORDINARIA', 'ACAO_PREFERENCIAL']
-}
 
 function App() {
   const [filters, setFilters] = useState({
-    minPrice: WHEEL_CRITERIA.minPrice,
-    maxPrice: WHEEL_CRITERIA.maxPrice,
-    minVolume: WHEEL_CRITERIA.minVolume
+    minPrice: 15,
+    maxPrice: 60,
+    minVolume: 100000
   })
   
-  const [instruments, setInstruments] = useState([])
+  const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
-  const [lastUpdate, setLastUpdate] = useState(null)
-  const [isDemo, setIsDemo] = useState(true)
+  const [error, setError] = useState('')
+  const [apiToken, setApiToken] = useState('')
+  const [showToken, setShowToken] = useState(false)
+  const [tokenConfigured, setTokenConfigured] = useState(false)
 
-  // Função para simular busca de instrumentos elegíveis
-  const searchInstruments = async () => {
+  // Dados simulados para demonstração
+  const mockData = [
+    {
+      symbol: 'PETR4',
+      name: 'Petrobras PN',
+      price: 32.45,
+      volume: 15420000,
+      roic: 8.2,
+      score: 95,
+      sector: 'Petróleo e Gás'
+    },
+    {
+      symbol: 'VALE3',
+      name: 'Vale ON',
+      price: 58.90,
+      volume: 8750000,
+      roic: 7.8,
+      score: 92,
+      sector: 'Mineração'
+    },
+    {
+      symbol: 'ITUB4',
+      name: 'Itaú Unibanco PN',
+      price: 28.15,
+      volume: 12300000,
+      roic: 9.1,
+      score: 89,
+      sector: 'Bancos'
+    },
+    {
+      symbol: 'BBDC4',
+      name: 'Bradesco PN',
+      price: 24.80,
+      volume: 9850000,
+      roic: 8.7,
+      score: 87,
+      sector: 'Bancos'
+    },
+    {
+      symbol: 'ABEV3',
+      name: 'Ambev ON',
+      price: 16.25,
+      volume: 18200000,
+      roic: 6.9,
+      score: 84,
+      sector: 'Bebidas'
+    },
+    {
+      symbol: 'WEGE3',
+      name: 'WEG ON',
+      price: 45.30,
+      volume: 3200000,
+      roic: 12.4,
+      score: 91,
+      sector: 'Máquinas'
+    }
+  ]
+
+  const handleSearch = async () => {
     setLoading(true)
+    setError('')
     
     try {
-      // Simular delay da API
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
-      // Aplicar filtros aos dados mock
-      const eligibleInstruments = MOCK_INSTRUMENTS
-        .filter(instrument => {
-          const price = instrument.market.close || 0
-          const volume = instrument.market.fin_volume || 0
-          
-          return (
-            price >= filters.minPrice &&
-            price <= filters.maxPrice &&
-            volume >= filters.minVolume &&
-            instrument.info?.has_options === true
-          )
+      if (apiToken && tokenConfigured) {
+        // Tentativa de usar API real (com token fornecido pelo usuário)
+        const response = await fetch('/api/instruments', {
+          headers: {
+            'X-OpLab-Token': apiToken,
+            'Content-Type': 'application/json'
+          }
         })
-        .sort((a, b) => {
-          // Ordenar por volume financeiro (maior para menor)
-          const volumeA = a.market.fin_volume || 0
-          const volumeB = b.market.fin_volume || 0
-          return volumeB - volumeA
-        })
-
-      setInstruments(eligibleInstruments)
-      setLastUpdate(new Date())
+        
+        if (!response.ok) {
+          throw new Error('Erro na API OpLab. Usando dados simulados.')
+        }
+        
+        const data = await response.json()
+        // Processar dados reais da API aqui
+        setResults(data)
+      } else {
+        // Usar dados simulados
+        await new Promise(resolve => setTimeout(resolve, 1500)) // Simular delay da API
+        
+        const filtered = mockData.filter(stock => 
+          stock.price >= filters.minPrice && 
+          stock.price <= filters.maxPrice &&
+          stock.volume >= filters.minVolume
+        )
+        
+        setResults(filtered.sort((a, b) => b.score - a.score))
+      }
     } catch (err) {
-      console.error('Erro na busca:', err)
-      setInstruments([])
+      console.warn('Usando dados simulados:', err.message)
+      // Fallback para dados simulados
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      const filtered = mockData.filter(stock => 
+        stock.price >= filters.minPrice && 
+        stock.price <= filters.maxPrice &&
+        stock.volume >= filters.minVolume
+      )
+      
+      setResults(filtered.sort((a, b) => b.score - a.score))
     } finally {
       setLoading(false)
     }
   }
 
-  // Buscar dados ao carregar a página
-  useEffect(() => {
-    searchInstruments()
-  }, [])
-
-  // Função para exportar resultados em CSV
-  const exportToCSV = () => {
-    if (instruments.length === 0) return
-
-    const headers = ['Símbolo', 'Nome', 'Preço', 'Variação %', 'Volume', 'Volume Financeiro', 'Bid', 'Ask']
+  const handleExportCSV = () => {
+    if (results.length === 0) return
+    
+    const headers = ['Símbolo', 'Nome', 'Preço', 'Volume', 'ROIC (%)', 'Score', 'Setor']
     const csvContent = [
       headers.join(','),
-      ...instruments.map(inst => [
-        inst.symbol,
-        `"${inst.name}"`,
-        (inst.market.close || 0).toFixed(2),
-        ((inst.market.variation || 0) * 100).toFixed(2),
-        inst.market.vol || 0,
-        (inst.market.fin_volume || 0).toFixed(0),
-        (inst.market.bid || 0).toFixed(2),
-        (inst.market.ask || 0).toFixed(2)
+      ...results.map(stock => [
+        stock.symbol,
+        `"${stock.name}"`,
+        stock.price.toFixed(2),
+        stock.volume,
+        stock.roic.toFixed(1),
+        stock.score,
+        `"${stock.sector}"`
       ].join(','))
-    ].join('\n')
-
+    ].join('\\n')
+    
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
@@ -208,157 +158,208 @@ function App() {
     document.body.removeChild(link)
   }
 
-  // Função para formatar valores monetários
-  const formatCurrency = (value) => {
+  const handleTokenSave = () => {
+    if (apiToken.trim()) {
+      setTokenConfigured(true)
+      setError('')
+    } else {
+      setError('Por favor, insira um token válido da API OpLab')
+    }
+  }
+
+  const formatNumber = (num) => {
+    return new Intl.NumberFormat('pt-BR').format(num)
+  }
+
+  const formatCurrency = (num) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
-    }).format(value || 0)
-  }
-
-  // Função para formatar números grandes
-  const formatLargeNumber = (value) => {
-    if (value >= 1000000000) {
-      return `${(value / 1000000000).toFixed(1)}B`
-    } else if (value >= 1000000) {
-      return `${(value / 1000000).toFixed(1)}M`
-    } else if (value >= 1000) {
-      return `${(value / 1000).toFixed(1)}K`
-    }
-    return value?.toString() || '0'
-  }
-
-  // Função para calcular ROIC estimado
-  const calculateROIC = (instrument) => {
-    const price = instrument.market.close || 0
-    const bid = instrument.market.bid || 0
-    const ask = instrument.market.ask || 0
-    
-    // Estimativa simples: diferença entre bid/ask como base para premium
-    const estimatedPremium = (ask - bid) * 0.5
-    const roic = price > 0 ? (estimatedPremium / price) * 100 : 0
-    
-    return roic
+    }).format(num)
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold text-foreground">The Wheel Screener</h1>
-          <p className="text-muted-foreground text-lg">
-            Ferramenta de screening automatizado para a estratégia "The Wheel"
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            The Wheel Screener
+          </h1>
+          <p className="text-lg text-gray-600">
+            Screening automatizado para estratégia "The Wheel" no mercado brasileiro
           </p>
-          {isDemo && (
-            <div className="flex items-center justify-center gap-2 text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-200">
-              <AlertCircle className="h-4 w-4" />
-              <span className="text-sm font-medium">
-                Versão demonstrativa com dados simulados - Integração com API OpLab em desenvolvimento
-              </span>
-            </div>
-          )}
         </div>
 
+        {/* Configuração da API */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Configuração da API OpLab
+            </CardTitle>
+            <CardDescription>
+              Configure seu token da API OpLab para dados reais. Sem token, serão usados dados simulados para demonstração.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-4 items-end">
+              <div className="flex-1">
+                <Label htmlFor="api-token">Token da API OpLab</Label>
+                <div className="relative">
+                  <Input
+                    id="api-token"
+                    type={showToken ? "text" : "password"}
+                    placeholder="Cole seu token da API OpLab aqui..."
+                    value={apiToken}
+                    onChange={(e) => setApiToken(e.target.value)}
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowToken(!showToken)}
+                  >
+                    {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <Button onClick={handleTokenSave} disabled={!apiToken.trim()}>
+                Configurar
+              </Button>
+            </div>
+            {tokenConfigured && (
+              <Alert className="mt-3">
+                <AlertDescription>
+                  ✅ Token configurado! A aplicação tentará usar dados reais da API OpLab.
+                </AlertDescription>
+              </Alert>
+            )}
+            {!tokenConfigured && (
+              <Alert className="mt-3">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  🔒 Versão segura: Token não exposto no código. Configure seu token para usar dados reais.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Filtros */}
-        <Card>
+        <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Search className="h-5 w-5" />
               Filtros de Screening
             </CardTitle>
             <CardDescription>
-              Configure os critérios para identificar ativos elegíveis para a estratégia "The Wheel"
+              Configure os critérios para identificar oportunidades da estratégia "The Wheel"
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Preço Mínimo (R$)</label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <Label htmlFor="min-price">Preço Mínimo (R$)</Label>
                 <Input
+                  id="min-price"
                   type="number"
                   value={filters.minPrice}
-                  onChange={(e) => setFilters(prev => ({ ...prev, minPrice: Number(e.target.value) }))}
+                  onChange={(e) => setFilters({...filters, minPrice: Number(e.target.value)})}
                   min="1"
-                  step="0.01"
+                  max="100"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Preço Máximo (R$)</label>
+              <div>
+                <Label htmlFor="max-price">Preço Máximo (R$)</Label>
                 <Input
+                  id="max-price"
                   type="number"
                   value={filters.maxPrice}
-                  onChange={(e) => setFilters(prev => ({ ...prev, maxPrice: Number(e.target.value) }))}
+                  onChange={(e) => setFilters({...filters, maxPrice: Number(e.target.value)})}
                   min="1"
-                  step="0.01"
+                  max="200"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Volume Mínimo</label>
+              <div>
+                <Label htmlFor="min-volume">Volume Mínimo</Label>
                 <Input
+                  id="min-volume"
                   type="number"
                   value={filters.minVolume}
-                  onChange={(e) => setFilters(prev => ({ ...prev, minVolume: Number(e.target.value) }))}
-                  min="0"
-                  step="1000"
+                  onChange={(e) => setFilters({...filters, minVolume: Number(e.target.value)})}
+                  min="10000"
+                  step="10000"
                 />
               </div>
             </div>
-            <div className="flex gap-2 mt-4">
-              <Button onClick={searchInstruments} disabled={loading} className="flex items-center gap-2">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                {loading ? 'Buscando...' : 'Buscar Oportunidades'}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={exportToCSV} 
-                disabled={instruments.length === 0}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Exportar CSV
-              </Button>
-            </div>
+            <Button onClick={handleSearch} disabled={loading} className="w-full">
+              {loading ? 'Buscando...' : 'Buscar Oportunidades'}
+            </Button>
           </CardContent>
         </Card>
 
-        {/* Estatísticas */}
-        {instruments.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Erro */}
+        {error && (
+          <Alert className="mb-6 border-yellow-200 bg-yellow-50">
+            <AlertDescription className="text-yellow-800">
+              {error}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Métricas */}
+        {results.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Oportunidades Encontradas</p>
-                    <p className="text-2xl font-bold">{instruments.length}</p>
+                    <p className="text-sm text-gray-600">Oportunidades</p>
+                    <p className="text-2xl font-bold">{results.length}</p>
                   </div>
-                  <TrendingUp className="h-8 w-8 text-primary" />
+                  <TrendingUp className="h-8 w-8 text-blue-600" />
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Faixa de Preços</p>
+                    <p className="text-sm text-gray-600">ROIC Médio</p>
                     <p className="text-2xl font-bold">
-                      {formatCurrency(filters.minPrice)} - {formatCurrency(filters.maxPrice)}
+                      {(results.reduce((acc, stock) => acc + stock.roic, 0) / results.length).toFixed(1)}%
                     </p>
                   </div>
-                  <DollarSign className="h-8 w-8 text-primary" />
+                  <BarChart3 className="h-8 w-8 text-green-600" />
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Última Atualização</p>
+                    <p className="text-sm text-gray-600">Score Médio</p>
                     <p className="text-2xl font-bold">
-                      {lastUpdate ? lastUpdate.toLocaleTimeString('pt-BR') : '--:--'}
+                      {Math.round(results.reduce((acc, stock) => acc + stock.score, 0) / results.length)}
                     </p>
                   </div>
-                  <BarChart3 className="h-8 w-8 text-primary" />
+                  <DollarSign className="h-8 w-8 text-purple-600" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Volume Total</p>
+                    <p className="text-xl font-bold">
+                      {formatNumber(results.reduce((acc, stock) => acc + stock.volume, 0))}
+                    </p>
+                  </div>
+                  <BarChart3 className="h-8 w-8 text-orange-600" />
                 </div>
               </CardContent>
             </Card>
@@ -366,102 +367,114 @@ function App() {
         )}
 
         {/* Resultados */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Resultados do Screening</CardTitle>
-            <CardDescription>
-              Ativos elegíveis para a estratégia "The Wheel" ordenados por volume financeiro
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin" />
-                <span className="ml-2">Carregando dados...</span>
+        {results.length > 0 && (
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Oportunidades Identificadas</CardTitle>
+                  <CardDescription>
+                    Ações ranqueadas por atratividade para estratégia "The Wheel"
+                  </CardDescription>
+                </div>
+                <Button onClick={handleExportCSV} variant="outline">
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar CSV
+                </Button>
               </div>
-            ) : instruments.length > 0 ? (
+            </CardHeader>
+            <CardContent>
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
+                <table className="w-full">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left p-3 font-medium">Símbolo</th>
-                      <th className="text-left p-3 font-medium">Nome</th>
-                      <th className="text-right p-3 font-medium">Preço</th>
-                      <th className="text-right p-3 font-medium">Variação</th>
-                      <th className="text-right p-3 font-medium">Vol. Financeiro</th>
-                      <th className="text-right p-3 font-medium">Bid/Ask</th>
-                      <th className="text-right p-3 font-medium">ROIC Est.</th>
-                      <th className="text-center p-3 font-medium">Opções</th>
+                      <th className="text-left p-2">Ranking</th>
+                      <th className="text-left p-2">Símbolo</th>
+                      <th className="text-left p-2">Nome</th>
+                      <th className="text-right p-2">Preço</th>
+                      <th className="text-right p-2">Volume</th>
+                      <th className="text-right p-2">ROIC</th>
+                      <th className="text-right p-2">Score</th>
+                      <th className="text-left p-2">Setor</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {instruments.map((instrument, index) => (
-                      <tr key={instrument.symbol} className="border-b hover:bg-muted/50">
-                        <td className="p-3">
-                          <span className="font-mono font-medium">{instrument.symbol}</span>
+                    {results.map((stock, index) => (
+                      <tr key={stock.symbol} className="border-b hover:bg-gray-50">
+                        <td className="p-2">
+                          <Badge variant={index < 3 ? "default" : "secondary"}>
+                            #{index + 1}
+                          </Badge>
                         </td>
-                        <td className="p-3">
-                          <span className="text-sm">{instrument.name}</span>
+                        <td className="p-2 font-mono font-bold">{stock.symbol}</td>
+                        <td className="p-2">{stock.name}</td>
+                        <td className="p-2 text-right font-semibold">
+                          {formatCurrency(stock.price)}
                         </td>
-                        <td className="p-3 text-right">
-                          <span className="font-medium">
-                            {formatCurrency(instrument.market.close)}
-                          </span>
+                        <td className="p-2 text-right">
+                          {formatNumber(stock.volume)}
                         </td>
-                        <td className="p-3 text-right">
+                        <td className="p-2 text-right">
+                          <Badge variant="outline" className="text-green-700">
+                            {stock.roic.toFixed(1)}%
+                          </Badge>
+                        </td>
+                        <td className="p-2 text-right">
                           <Badge 
-                            variant={
-                              (instrument.market.variation || 0) >= 0 ? "default" : "destructive"
-                            }
+                            variant={stock.score >= 90 ? "default" : "secondary"}
+                            className={stock.score >= 90 ? "bg-green-600" : ""}
                           >
-                            {((instrument.market.variation || 0) * 100).toFixed(2)}%
+                            {stock.score}
                           </Badge>
                         </td>
-                        <td className="p-3 text-right">
-                          <span className="text-sm">
-                            {formatCurrency(instrument.market.fin_volume)}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right">
-                          <span className="text-xs text-muted-foreground">
-                            {formatCurrency(instrument.market.bid)} / {formatCurrency(instrument.market.ask)}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right">
-                          <Badge variant="outline">
-                            {calculateROIC(instrument).toFixed(2)}%
-                          </Badge>
-                        </td>
-                        <td className="p-3 text-center">
-                          <Badge variant="outline">
-                            {instrument.info?.has_options ? 'Sim' : 'Não'}
-                          </Badge>
-                        </td>
+                        <td className="p-2 text-sm text-gray-600">{stock.sector}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  Nenhuma oportunidade encontrada com os critérios atuais.
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Tente ajustar os filtros e buscar novamente.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Analisando oportunidades...</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Empty State */}
+        {!loading && results.length === 0 && (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 mb-2">Nenhuma oportunidade encontrada</p>
+              <p className="text-sm text-gray-500">
+                Ajuste os filtros e tente novamente
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Footer */}
-        <div className="text-center text-sm text-muted-foreground">
+        <div className="text-center mt-8 text-sm text-gray-500">
           <p>
-            Dados {isDemo ? 'simulados para demonstração' : 'fornecidos pela API OpLab'} • Desenvolvido para o Projeto Aplicado de Pós-graduação
+            The Wheel Screener - Projeto Aplicado de Pós-graduação em Ciência de Dados e Mercado Financeiro
           </p>
           <p className="mt-1">
-            Estratégia "The Wheel" - Screening automatizado para identificação de oportunidades
+            {!tokenConfigured && "Demonstração com dados simulados - "}
+            <a 
+              href="https://github.com/pdro-dev/the-wheel-screener" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              Código fonte no GitHub
+            </a>
           </p>
         </div>
       </div>

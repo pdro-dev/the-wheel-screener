@@ -19,7 +19,11 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
         configure: (proxy, options) => {
           proxy.on('proxyReq', (proxyReq, req, res) => {
-            proxyReq.setHeader('Access-Token', '9u6ykxOMf7M5IOX3mA54FUISYIyy9LD24EngKuv4CAvGxqB4P9dbGuW+IK8E4BJY--IMuGLGk9CJSpTgsWlkEYjA==--OWYyZjRiZjM1MjI0MDg0ZDgwMTA2NjQxY2U0YzMzOGU=')
+            // Token será fornecido pelo usuário via interface
+            const token = req.headers['x-oplab-token'];
+            if (token) {
+              proxyReq.setHeader('Access-Token', token);
+            }
           })
         }
       }
