@@ -25,6 +25,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
       
+    - name: Setup pnpm
+      uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
+      with:
+        version: 8
+        
     - name: Setup Node.js
       uses: actions/setup-node@5e21ff4d9bc1a8cf6de233a3057d20ec6b3fb69d # v4.0.0
       with:
@@ -32,9 +37,13 @@ jobs:
         cache: 'pnpm'
         cache-dependency-path: pnpm-lock.yaml
         
-    - name: Install pnpm
-      run: npm install -g pnpm
-      
+    - name: Verify pnpm installation
+      run: |
+        echo "pnpm version:"
+        pnpm --version
+        echo "pnpm location:"
+        which pnpm
+        
     - name: Security Audit
       run: |
         echo "Running security audit..."
