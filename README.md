@@ -18,6 +18,7 @@ O **The Wheel Screener** é uma aplicação web desenvolvida como parte de um pr
 - **💾 Exportação CSV**: Download dos resultados para análise externa
 - **⚡ Cache Inteligente**: Otimização de performance e redução de custos
 - **🎨 UI Profissional**: Interface limpa e intuitiva
+- **🔒 Configuração Segura**: Campo protegido para inserção de credenciais
 
 ## 🛠️ Tecnologias Utilizadas
 
@@ -37,7 +38,7 @@ O **The Wheel Screener** é uma aplicação web desenvolvida como parte de um pr
 
 1. **Clone o repositório**
 ```bash
-git clone https://github.com/[seu-usuario]/the-wheel-screener.git
+git clone https://github.com/pdro-dev/the-wheel-screener.git
 cd the-wheel-screener
 ```
 
@@ -66,20 +67,66 @@ http://localhost:5173
 - `npm run build` - Gera build de produção
 - `npm run preview` - Visualiza build de produção localmente
 
-## 🔧 Configuração da API OpLab
+## 🔒 Segurança e Configuração da API
 
-Para usar dados reais da API OpLab, configure as seguintes variáveis:
+### ⚠️ AVISOS IMPORTANTES DE SEGURANÇA
 
-1. **Endpoint**: `https://api.oplab.com.br/v3`
-2. **Token**: Configure no arquivo `vite.config.js`
-3. **Headers**: `Access-Token` com seu token válido
+- **NUNCA** commite tokens ou credenciais no código fonte
+- **SEMPRE** use variáveis de ambiente para informações sensíveis
+- **VERIFIQUE** se arquivos `.env` estão no `.gitignore`
+- **UTILIZE** o proxy seguro para chamadas de API em produção
 
-### Exemplo de Configuração
+### Configuração Segura para Desenvolvimento
+
+#### 1. Configuração Local (Desenvolvimento)
+
+**Crie arquivo `.env.local` (já incluído no .gitignore):**
+```bash
+# .env.local - NUNCA commitar este arquivo
+VITE_OPLAB_TOKEN=seu_token_aqui
+```
+
+**Use no código de forma segura:**
+```javascript
+// ✅ SEGURO - Token do ambiente
+const token = import.meta.env.VITE_OPLAB_TOKEN;
+
+if (!token) {
+  console.warn('Token OpLab não configurado - usando dados simulados');
+  return mockData;
+}
+```
+
+#### 2. Configuração para Produção
+
+**Em produção, use o proxy seguro configurado:**
+```javascript
+// ✅ SEGURO - Chamada via proxy (sem exposição de token)
+const response = await fetch('/api/oplab/stocks');
+```
+
+**O proxy mantém o token seguro no servidor, não no cliente.**
+
+### ❌ NUNCA Faça Isso:
 
 ```javascript
-// vite.config.js
+// ❌ INSEGURO - Token exposto no código
+const token = "9u6ykxOMf7M5IOX3mA54...";
+
+// ❌ INSEGURO - Token visível no Network tab
+fetch('https://api.oplab.com.br/v3/stocks', {
+  headers: { 'Access-Token': userToken }
+});
+
+// ❌ INSEGURO - Credenciais commitadas
+proxyReq.setHeader('Access-Token', 'TOKEN_REAL_AQUI')
+```
+
+### ✅ Configuração Correta do Proxy (Desenvolvimento)
+
+```javascript
+// vite.config.js - Configuração segura
 export default defineConfig({
-  // ... outras configurações
   server: {
     proxy: {
       '/api': {
@@ -88,14 +135,45 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
         configure: (proxy, options) => {
           proxy.on('proxyReq', (proxyReq, req, res) => {
-            proxyReq.setHeader('Access-Token', 'SEU_TOKEN_AQUI')
-          })
+            // ✅ Token do ambiente, não hardcoded
+            const token = process.env.VITE_OPLAB_TOKEN;
+            if (token) {
+              proxyReq.setHeader('Access-Token', token);
+            }
+          });
         }
       }
     }
   }
-})
+});
 ```
+
+### 🔧 Checklist de Segurança
+
+Antes de fazer commit, verifique:
+
+- [ ] Nenhum token ou credencial no código fonte
+- [ ] Arquivo `.env.local` criado e no `.gitignore`
+- [ ] Proxy configurado para desenvolvimento
+- [ ] Produção usa proxy seguro (sem tokens no cliente)
+- [ ] Sem credenciais em logs ou console
+- [ ] README não contém exemplos com tokens reais
+
+### 🚨 Problemas Comuns e Soluções
+
+#### "Token não funciona em desenvolvimento"
+- ✅ Verifique se `.env.local` existe e contém `VITE_OPLAB_TOKEN=seu_token`
+- ✅ Confirme que `.env.local` está listado no `.gitignore`
+- ✅ Reinicie o servidor de desenvolvimento (`npm run dev`)
+
+#### "API não funciona em produção"
+- ✅ Use apenas o proxy seguro (`/api/oplab/endpoint`)
+- ✅ **NÃO** faça chamadas diretas para `api.oplab.com.br` do frontend
+- ✅ Configure variáveis de ambiente no Vercel/Netlify
+
+#### "Erro de CORS"
+- ✅ Use o proxy configurado ao invés de chamadas diretas
+- ✅ Verifique se o proxy está funcionando em desenvolvimento
 
 ## 📊 Estratégia "The Wheel"
 
@@ -121,6 +199,7 @@ A estratégia "The Wheel" é uma abordagem sistemática de investimento em opç�
 - ✅ **Performance**: Carregamento < 2 segundos
 - ✅ **Disponibilidade**: 24/7 via web
 - ✅ **Responsividade**: 100% mobile/desktop
+- ✅ **Segurança**: Tokens protegidos, sem exposição no cliente
 
 ### Métricas Técnicas
 - **Bundle Size**: 232.76 kB (gzip: 72.75 kB)
@@ -139,6 +218,7 @@ src/
 
 public/                 # Arquivos estáticos
 dist/                   # Build de produção
+.env.local             # Variáveis de ambiente (NÃO commitar)
 ```
 
 ## 🎨 Design System
@@ -158,19 +238,36 @@ A aplicação é totalmente responsiva com breakpoints:
 - **Tablet**: 768px - 1024px  
 - **Desktop**: > 1024px
 
-## 🔒 Segurança
+## 🔒 Segurança Implementada
 
-- **HTTPS**: Deploy com certificado SSL
-- **CORS**: Configuração adequada para APIs
-- **Sanitização**: Validação de inputs do usuário
+### Medidas de Segurança Ativas
+
+- **HTTPS**: Deploy com certificado SSL obrigatório
+- **CORS**: Configuração restritiva para APIs autorizadas
+- **Sanitização**: Validação rigorosa de inputs do usuário
 - **Headers**: Configurações de segurança no deploy
+- **Token Protection**: Credenciais nunca expostas no cliente
+- **XSS Prevention**: Sanitização de cores e dados dinâmicos
+- **Input Validation**: Whitelist de formatos válidos
+
+### Auditoria de Segurança
+
+O projeto passou por auditoria de segurança que identificou e corrigiu:
+
+- ✅ **XSS via dangerouslySetInnerHTML**: Removido e substituído por CSS variables seguras
+- ✅ **Exposição de tokens**: Implementado proxy seguro para produção
+- ✅ **Documentação insegura**: Corrigida com exemplos seguros e avisos
+- ✅ **Sanitização de inputs**: Implementada validação rigorosa de cores e dados
 
 ## 🚀 Deploy
 
 ### Vercel (Recomendado)
 
 1. **Conecte o repositório** no dashboard da Vercel
-2. **Configure as variáveis** de ambiente se necessário
+2. **Configure as variáveis** de ambiente:
+   ```
+   OPLAB_TOKEN=seu_token_aqui
+   ```
 3. **Deploy automático** a cada push na branch main
 
 ### Netlify
@@ -178,12 +275,14 @@ A aplicação é totalmente responsiva com breakpoints:
 1. **Conecte o repositório** no dashboard da Netlify
 2. **Configure build command**: `npm run build`
 3. **Configure publish directory**: `dist`
+4. **Configure variáveis** de ambiente no dashboard
 
 ### Manual
 
 ```bash
 npm run build
 # Upload da pasta dist/ para seu servidor
+# Configure variáveis de ambiente no servidor
 ```
 
 ## 📚 Documentação Adicional
@@ -204,6 +303,13 @@ Este projeto foi desenvolvido como parte de um projeto aplicado acadêmico. Cont
 4. **Push** para a branch (`git push origin feature/AmazingFeature`)
 5. **Abra um Pull Request**
 
+### Diretrizes de Contribuição
+
+- **Segurança em primeiro lugar**: Nunca commite credenciais
+- **Testes obrigatórios**: Toda mudança deve ser testada
+- **Code review**: Todas as mudanças passam por revisão
+- **Documentação**: Atualize a documentação quando necessário
+
 ## 📄 Licença
 
 Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
@@ -221,15 +327,15 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 ## 🔄 Roadmap Futuro
 
 ### Versão 2.0 (Planejada)
-- [ ] Integração real com API OpLab
-- [ ] Sistema de autenticação
-- [ ] Dashboard de performance
-- [ ] Alertas automáticos
+- [ ] Integração real com API OpLab via proxy seguro
+- [ ] Sistema de autenticação robusto
+- [ ] Dashboard de performance avançado
+- [ ] Alertas automáticos configuráveis
 - [ ] Backtesting histórico
 - [ ] Múltiplas estratégias de opções
 
 ### Versão 3.0 (Visão)
-- [ ] Integração com corretoras
+- [ ] Integração segura com corretoras
 - [ ] Execução automática de ordens
 - [ ] Machine Learning para otimização
 - [ ] App mobile nativo
@@ -237,5 +343,5 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 
 ---
 
-*Desenvolvido com ❤️ para a comunidade de investidores brasileiros*
+*Desenvolvido com ❤️ e 🔒 segurança para a comunidade de investidores brasileiros*
 

@@ -1,9 +1,39 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self';
+      style-src 'self' 'unsafe-inline';
+      img-src 'self' data: https:;
+      connect-src 'self' https://api.oplab.com.br;
+      font-src 'self';
+      object-src 'none';
+      base-uri 'none';
+      frame-ancestors 'none';
+      form-action 'self';
+    ">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    
+    <!-- SEO and Description -->
+    <meta name="description" content="Ferramenta web especializada para screening automatizado da estratégia The Wheel no mercado brasileiro de opções. Reduz tempo de análise de 2h para 10min.">
+    <meta name="keywords" content="the wheel, opções, screening, mercado financeiro, investimentos, brasil">
+    <meta name="author" content="Projeto Aplicado - Pós-graduação">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="The Wheel Screener">
+    <meta property="og:description" content="Screening automatizado para estratégia The Wheel - 92% de redução no tempo de análise">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://pdro-dev.github.io/the-wheel-screener/">
+    
     <title>The Wheel Screener - Ferramenta de Screening para Estratégia The Wheel</title>
   </head>
   <body>
@@ -11,3 +41,4 @@
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
+

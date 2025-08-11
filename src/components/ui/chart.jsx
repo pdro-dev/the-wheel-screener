@@ -40,8 +40,8 @@ function ChartContainer({
           "[&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border flex aspect-video justify-center text-xs [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-sector]:outline-hidden [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-hidden",
           className
         )}
+        style={generateChartStyles(chartId, config)}
         {...props}>
-        <ChartStyle id={chartId} config={config} />
         <RechartsPrimitive.ResponsiveContainer>
           {children}
         </RechartsPrimitive.ResponsiveContainer>
@@ -50,36 +50,70 @@ function ChartContainer({
   );
 }
 
-const ChartStyle = ({
-  id,
-  config
-}) => {
+// CORREÇÃO DE SEGURANÇA: Substituir dangerouslySetInnerHTML por CSS variables seguras
+const generateChartStyles = (chartId, config) => {
   const colorConfig = Object.entries(config).filter(([, config]) => config.theme || config.color)
-
+  
   if (!colorConfig.length) {
-    return null
+    return {}
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-.map(([key, itemConfig]) => {
-const color =
-  itemConfig.theme?.[theme] ||
-  itemConfig.color
-return color ? `  --color-${key}: ${color};` : null
-})
-.join("\n")}
+  const styles = {}
+  
+  // Gerar CSS variables seguras para cada cor
+  colorConfig.forEach(([key, itemConfig]) => {
+    // Sanitizar cores para prevenir XSS
+    const lightColor = sanitizeColor(itemConfig.theme?.light || itemConfig.color)
+    const darkColor = sanitizeColor(itemConfig.theme?.dark || itemConfig.color)
+    
+    if (lightColor) {
+      styles[`--color-${key}`] = lightColor
+    }
+    if (darkColor && darkColor !== lightColor) {
+      styles[`--color-${key}-dark`] = darkColor
+    }
+  })
+  
+  return styles
 }
-`)
-          .join("\n"),
-      }} />
-  );
+
+// Função de sanitização para prevenir XSS via cores
+const sanitizeColor = (color) => {
+  if (!color || typeof color !== 'string') {
+    return null
+  }
+  
+  // Whitelist de formatos de cor válidos
+  const validColorPatterns = [
+    /^#[0-9a-fA-F]{3}$/,           // #RGB
+    /^#[0-9a-fA-F]{6}$/,           // #RRGGBB
+    /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/,  // rgb(r,g,b)
+    /^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[0-9.]+\s*\)$/, // rgba(r,g,b,a)
+    /^hsl\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*\)$/, // hsl(h,s,l)
+    /^hsla\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*,\s*[0-9.]+\s*\)$/, // hsla(h,s,l,a)
+    /^[a-zA-Z]+$/                  // Cores nomeadas (red, blue, etc.)
+  ]
+  
+  // Verificar se a cor corresponde a algum padrão válido
+  const isValid = validColorPatterns.some(pattern => pattern.test(color.trim()))
+  
+  if (!isValid) {
+    console.warn(`Invalid color format detected and sanitized: ${color}`)
+    return null
+  }
+  
+  // Verificar se não contém caracteres perigosos
+  const dangerousChars = ['<', '>', '"', "'", '\\', ';', '}', '{']
+  if (dangerousChars.some(char => color.includes(char))) {
+    console.warn(`Potentially dangerous characters in color: ${color}`)
+    return null
+  }
+  
+  return color.trim()
 }
+
+// REMOVIDO: ChartStyle component que usava dangerouslySetInnerHTML
+// A funcionalidade foi movida para generateChartStyles() de forma segura
 
 const ChartTooltip = RechartsPrimitive.Tooltip
 
@@ -180,8 +214,8 @@ function ChartTooltipContent({
                         })}
                         style={
                           {
-                            "--color-bg": indicatorColor,
-                            "--color-border": indicatorColor
+                            "--color-bg": sanitizeColor(indicatorColor),
+                            "--color-border": sanitizeColor(indicatorColor)
                           }
                         } />
                     )
@@ -251,7 +285,7 @@ function ChartLegendContent({
               <div
                 className="h-2 w-2 shrink-0 rounded-[2px]"
                 style={{
-                  backgroundColor: item.color,
+                  backgroundColor: sanitizeColor(item.color),
                 }} />
             )}
             {itemConfig?.label}
@@ -305,5 +339,5 @@ export {
   ChartTooltipContent,
   ChartLegend,
   ChartLegendContent,
-  ChartStyle,
 }
+
