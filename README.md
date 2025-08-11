@@ -7,7 +7,7 @@ Uma ferramenta web especializada para screening automatizado da estratégia "The
 O **The Wheel Screener** é uma aplicação web desenvolvida como parte de um projeto aplicado de pós-graduação em Ciência de Dados e Mercado Financeiro. A ferramenta automatiza o processo de identificação de oportunidades para a estratégia "The Wheel", reduzindo o tempo de análise de 2 horas para 10 minutos (92% de redução).
 
 ### 🌐 Demo Online
-**URL:** https://fsnbcvkq.manus.space
+**URL:** https://pdro-dev.github.io/the-wheel-screener/
 
 ## ✨ Funcionalidades
 
@@ -212,23 +212,7 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 
 **Projeto Aplicado - Pós-graduação**
 - **Curso**: Ciência de Dados e Mercado Financeiro
-- **Instituição**: [Nome da Instituição]
 - **Ano**: 2025
-
-## 🙏 Agradecimentos
-
-- **OpLab** pela API de dados de mercado
-- **shadcn/ui** pelos componentes de qualidade
-- **Vercel** pela plataforma de deploy
-- **Orientador acadêmico** pelo suporte e direcionamento
-
-## 📞 Contato
-
-Para dúvidas sobre o projeto ou colaborações:
-
-- **Email**: [seu-email@exemplo.com]
-- **LinkedIn**: [seu-linkedin]
-- **GitHub**: [seu-github]
 
 ---
 
