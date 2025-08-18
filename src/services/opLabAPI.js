@@ -17,11 +17,11 @@ export const API_CONFIG = {
 }
 
 export const API_ENDPOINTS = {
-  instruments: '/instruments',
-  quotes: '/quotes',
-  fundamentals: '/fundamentals',
-  options: '/options',
-  screening: '/screening',
+  instruments: '/market/instruments',
+  quotes: '/market/quote',
+  fundamentals: '/market/fundamentals',
+  options: '/market/options',
+  screening: '/market/screening',
   user: '/user',
   health: '/health'
 }
