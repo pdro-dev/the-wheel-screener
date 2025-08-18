@@ -397,7 +397,7 @@ export function TokenConfiguration({ onTokenSave }) {
   const [token, setToken] = useState('')
   const [showToken, setShowToken] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const { setToken: saveToken, isAuthenticated } = useOpLabState()
+  const { setToken: saveToken, isAuthenticated, token: currentToken } = useOpLabState()
 
   const handleSave = async () => {
     if (!token.trim()) return
@@ -411,14 +411,61 @@ export function TokenConfiguration({ onTokenSave }) {
     }
   }
 
-  if (isAuthenticated) {
+  // Check if API is properly configured (has token and is authenticated)
+  const isAPIConfigured = currentToken && currentToken.length > 0
+
+  if (isAPIConfigured) {
     return (
-      <Alert className="border-green-500 bg-green-50">
-        <CheckCircle className="h-4 w-4 text-green-600" />
-        <AlertDescription className="text-green-700">
-          Token OpLab configurado com sucesso! A API está pronta para uso.
-        </AlertDescription>
-      </Alert>
+      <div className="space-y-4">
+        <Alert className="border-green-500 bg-green-50">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-700">
+            Token OpLab configurado com sucesso! 
+            {isAuthenticated ? ' A API está conectada e pronta para uso.' : ' Testando conexão...'}
+          </AlertDescription>
+        </Alert>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Settings className="h-5 w-5" />
+              <span>Configuração da API</span>
+            </CardTitle>
+            <CardDescription>
+              Gerencie seu token OpLab para acesso aos dados do mercado
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Token Atual</Label>
+              <div className="flex space-x-2 mt-2">
+                <Input
+                  type="password"
+                  value={currentToken}
+                  disabled
+                  placeholder="Token configurado"
+                />
+                <Button 
+                  onClick={() => {
+                    saveToken('')
+                    setToken('')
+                  }}
+                  variant="outline"
+                >
+                  Remover
+                </Button>
+              </div>
+            </div>
+            
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Token configurado e ativo. Para alterar, remova o token atual e configure um novo.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
