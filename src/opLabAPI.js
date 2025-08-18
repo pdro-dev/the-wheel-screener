@@ -1,1 +1,1 @@
-export * from './services/opLabAPI'
+export * from './services/opLabAPI.js'

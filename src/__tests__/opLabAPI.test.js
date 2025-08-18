@@ -4,6 +4,7 @@ import {
   OpLabAPIError,
   API_CONFIG,
   API_ENDPOINTS,
+  setRefreshInterval,
   getOpLabService,
   ScreeningUtils
 } from '../opLabAPI'
@@ -59,15 +60,15 @@ describe('OpLabAPIService', () => {
 
   describe('Cache Management', () => {
     it('should get cache key correctly', () => {
-      const key = service.getCacheKey('/test', { method: 'POST', body: '{"test": true}' })
-      expect(key).toBe('/test_{"test": true}_POST')
+      const key = service.getCacheKey('/test', { method: 'POST', body: { test: true } })
+      expect(key).toBe('/test_{"test":true}_POST')
     })
 
     it('should set and get cached data', () => {
       const key = 'test-key'
       const data = { result: 'test' }
       
-      service.setCache(key, data, '/instruments')
+      service.setCache(key, data, '/market/instruments')
       const cached = service.getFromCache(key)
       
       expect(cached).toEqual(data)
@@ -77,10 +78,10 @@ describe('OpLabAPIService', () => {
       const key = 'test-key'
       const data = { result: 'test' }
       
-      service.setCache(key, data, '/instruments')
+      service.setCache(key, data, '/market/instruments')
       
       // Fast forward time beyond cache TTL
-      vi.advanceTimersByTime(API_CONFIG.cache.instruments + 1000)
+      vi.advanceTimersByTime(API_CONFIG.refreshIntervals.instruments + 1000)
       
       const cached = service.getFromCache(key)
       expect(cached).toBeNull()
@@ -98,10 +99,25 @@ describe('OpLabAPIService', () => {
     it('should clear all cache', () => {
       service.cache.set('key1', 'data1')
       service.cache.set('key2', 'data2')
-      
+
       service.clearCache()
-      
+
       expect(service.cache.size).toBe(0)
+    })
+
+    it('should update refresh interval at runtime', () => {
+      const original = API_CONFIG.refreshIntervals.instruments
+      setRefreshInterval('instruments', 1000)
+
+      const key = 'dynamic-key'
+      const data = { result: 'dynamic' }
+
+      service.setCache(key, data, '/market/instruments')
+      vi.advanceTimersByTime(1000 + 10)
+
+      expect(service.getFromCache(key)).toBeNull()
+
+      setRefreshInterval('instruments', original)
     })
   })
 
@@ -146,6 +162,7 @@ describe('OpLabAPIService', () => {
     })
 
     it('should retry on server errors', async () => {
+      vi.useRealTimers()
       mockFetch
         .mockResolvedValueOnce({
           ok: false,
@@ -165,6 +182,7 @@ describe('OpLabAPIService', () => {
 
       expect(result).toEqual({ data: 'success' })
       expect(mockFetch).toHaveBeenCalledTimes(2)
+      vi.useFakeTimers()
     })
 
     it('should handle network errors', async () => {
@@ -174,10 +192,12 @@ describe('OpLabAPIService', () => {
         endpoint: '/test',
         options: { method: 'GET' }
       })).rejects.toThrow()
+      vi.useFakeTimers()
     })
 
     it('should handle timeout', async () => {
-      mockFetch.mockImplementation(() => 
+      vi.useRealTimers()
+      mockFetch.mockImplementation(() =>
         new Promise((resolve) => {
           setTimeout(() => resolve({
             ok: true,
@@ -274,6 +294,7 @@ describe('OpLabAPIService', () => {
 
   describe('Wheel Screening', () => {
     it('should perform wheel screening successfully', async () => {
+      vi.useRealTimers()
       const mockInstruments = [
         { symbol: 'PETR4', name: 'Petrobras', sector: 'Oil' }
       ]
@@ -311,9 +332,11 @@ describe('OpLabAPIService', () => {
       expect(result[0]).toHaveProperty('symbol', 'PETR4')
       expect(result[0]).toHaveProperty('score')
       expect(typeof result[0].score).toBe('number')
+      vi.useFakeTimers()
     })
 
     it('should return empty array when no instruments found', async () => {
+      vi.useRealTimers()
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve([])
@@ -322,9 +345,11 @@ describe('OpLabAPIService', () => {
       const result = await service.performWheelScreening({})
 
       expect(result).toEqual([])
+      vi.useFakeTimers()
     })
 
     it('should handle API errors in screening', async () => {
+      vi.useRealTimers()
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
@@ -332,6 +357,7 @@ describe('OpLabAPIService', () => {
       })
 
       await expect(service.performWheelScreening({})).rejects.toThrow()
+      vi.useFakeTimers()
     })
   })
 
@@ -343,7 +369,7 @@ describe('OpLabAPIService', () => {
         fundamental: { roic: 15, roe: 18, debtToEquity: 0.3, revenueGrowth: 0.15 }
       }
 
-      const score = service.calculateWheelScore(stock, {})
+      const score = service.calculateWheelScore(stock, { minVolume: 100000 })
 
       expect(score).toBeGreaterThan(50)
       expect(score).toBeLessThanOrEqual(100)
@@ -356,7 +382,7 @@ describe('OpLabAPIService', () => {
         fundamental: {}
       }
 
-      const score = service.calculateWheelScore(stock, {})
+      const score = service.calculateWheelScore(stock, { minVolume: 100000 })
 
       expect(score).toBeGreaterThan(0)
       expect(score).toBeLessThanOrEqual(100)
@@ -502,8 +528,8 @@ describe('Default Service Instance', () => {
 describe('ScreeningUtils', () => {
   describe('Filter Functions', () => {
     const mockStocks = [
-      { symbol: 'PETR4', price: 32.45, volume: 1000000, roic: 8.2, sectors: ['Oil'] },
-      { symbol: 'VALE3', price: 58.90, volume: 500000, roic: 7.8, sectors: ['Mining'] }
+      { symbol: 'PETR4', price: 32.45, volume: 1000000, roic: 8.2, sector: 'Oil' },
+      { symbol: 'VALE3', price: 58.90, volume: 500000, roic: 7.8, sector: 'Mining' }
     ]
 
     it('should filter by price', () => {
@@ -552,7 +578,7 @@ describe('ScreeningUtils', () => {
 
   describe('Formatting Functions', () => {
     it('should format currency', () => {
-      expect(ScreeningUtils.formatCurrency(32.45)).toBe('R$ 32,45')
+      expect(ScreeningUtils.formatCurrency(32.45)).toBe('R$ 32,45')
     })
 
     it('should format numbers', () => {
