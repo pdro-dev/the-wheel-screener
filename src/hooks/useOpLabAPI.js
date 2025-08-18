@@ -59,9 +59,11 @@ export function useOpLabState() {
   }, [updateState])
 
   const login = useCallback((username, password) => {
-    const validPassword = VALID_USERS[username]
-    if (validPassword && validPassword === password) {
-      updateState({ isAuthenticated: true, user: { name: username }, lastError: null })
+    const name = username.trim().toLowerCase()
+    const pass = password.trim()
+    const validPassword = VALID_USERS[name]
+    if (validPassword && validPassword === pass) {
+      updateState({ isAuthenticated: true, user: { name }, lastError: null })
       return true
     }
     updateState({ isAuthenticated: false, user: null, lastError: 'Credenciais inválidas' })
@@ -117,6 +119,13 @@ export function useOpLabState() {
     updateLimits,
     updateState
   }
+}
+
+// Internal utility for tests to reset global state
+export function __resetOpLabState() {
+  globalState = { ...OPLAB_STATE }
+  listeners.forEach((l) => l(globalState))
+  localStorage.removeItem('oplab_token')
 }
 
 // Hook for basic OpLab API calls
