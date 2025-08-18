@@ -101,6 +101,31 @@ describe('Screening Utilities', () => {
       const result = filterBySearch(mockStocks, '')
       expect(result).toHaveLength(3)
     })
+
+    it('should handle stocks missing search fields', () => {
+      const stocks = [
+        { name: 'Petrobras PN', sector: 'Petróleo e Gás' }, // missing symbol
+        { symbol: 'VALE3', sector: 'Mineração' }, // missing name
+        { symbol: 'ITUB4', name: 'Itaú Unibanco PN' }, // missing sector
+        {}
+      ]
+
+      let result = filterBySearch(stocks, 'vale')
+      expect(result).toHaveLength(1)
+      expect(result[0].symbol).toBe('VALE3')
+
+      result = filterBySearch(stocks, 'petrobras')
+      expect(result).toHaveLength(1)
+      expect(result[0].name).toBe('Petrobras PN')
+
+      result = filterBySearch(stocks, 'minera')
+      expect(result).toHaveLength(1)
+      expect(result[0].sector).toBe('Mineração')
+
+      result = filterBySearch(stocks, 'itub')
+      expect(result).toHaveLength(1)
+      expect(result[0].symbol).toBe('ITUB4')
+    })
   })
 
   describe('Apply Filters', () => {

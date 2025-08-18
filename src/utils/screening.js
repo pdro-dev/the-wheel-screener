@@ -28,10 +28,10 @@ export function filterBySearch(stocks, searchTerm = '') {
   if (!searchTerm.trim()) return stocks
   
   const term = searchTerm.toLowerCase()
-  return stocks.filter(stock => 
-    stock.symbol?.toLowerCase().includes(term) ||
-    stock.name?.toLowerCase().includes(term) ||
-    stock.sector?.toLowerCase().includes(term)
+  return stocks.filter(stock =>
+    stock.symbol?.toLowerCase()?.includes(term) ||
+    stock.name?.toLowerCase()?.includes(term) ||
+    stock.sector?.toLowerCase()?.includes(term)
   )
 }
 
