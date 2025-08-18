@@ -77,37 +77,38 @@ export function calculateWheelScore(stock, weights = {}) {
     ...weights
   }
 
-  let score = 0
-
   // ROIC Score (0-25 points)
   const roic = stock.roic || 0
-  if (roic >= 15) score += 25
-  else if (roic >= 10) score += 20
-  else if (roic >= 8) score += 15
-  else if (roic >= 5) score += 10
-  else score += 5
+  let roicScore
+  if (roic >= 15) roicScore = 25
+  else if (roic >= 10) roicScore = 20
+  else if (roic >= 8) roicScore = 15
+  else if (roic >= 5) roicScore = 10
+  else roicScore = 5
 
   // Volume Score (0-20 points)
   const volume = stock.volume || 0
   const minVolume = 100000
   const volumeRatio = volume / minVolume
-  if (volumeRatio >= 10) score += 20
-  else if (volumeRatio >= 5) score += 16
-  else if (volumeRatio >= 2) score += 12
-  else if (volumeRatio >= 1) score += 8
-  else score += 4
+  let volumeScore
+  if (volumeRatio >= 10) volumeScore = 20
+  else if (volumeRatio >= 5) volumeScore = 16
+  else if (volumeRatio >= 2) volumeScore = 12
+  else if (volumeRatio >= 1) volumeScore = 8
+  else volumeScore = 4
 
   // Volatility Score (0-15 points) - Lower is better
   const volatility = stock.volatility || 0.3
-  if (volatility <= 0.15) score += 15
-  else if (volatility <= 0.25) score += 12
-  else if (volatility <= 0.35) score += 9
-  else if (volatility <= 0.45) score += 6
-  else score += 3
+  let volatilityScore
+  if (volatility <= 0.15) volatilityScore = 15
+  else if (volatility <= 0.25) volatilityScore = 12
+  else if (volatility <= 0.35) volatilityScore = 9
+  else if (volatility <= 0.45) volatilityScore = 6
+  else volatilityScore = 3
 
   // Fundamentals Score (0-25 points)
   let fundamentalScore = 0
-  
+
   // Debt to Equity
   const debtToEquity = stock.debtToEquity || 0
   if (debtToEquity <= 0.3) fundamentalScore += 8
@@ -130,11 +131,9 @@ export function calculateWheelScore(stock, weights = {}) {
   else if (revenueGrowth >= 0) fundamentalScore += 3
   else fundamentalScore += 1
 
-  score += fundamentalScore
-
   // Technical Score (0-15 points)
   let technicalScore = 0
-  
+
   // Price trend
   const trend = stock.trend || 0
   if (trend > 0.05) technicalScore += 8
@@ -145,7 +144,7 @@ export function calculateWheelScore(stock, weights = {}) {
   // Support level proximity
   const supportLevel = stock.supportLevel || stock.price * 0.9
   const distanceFromSupport = (stock.price - supportLevel) / supportLevel
-  
+
   if (distanceFromSupport >= 0.05 && distanceFromSupport <= 0.15) {
     technicalScore += 7 // Good entry point
   } else if (distanceFromSupport >= 0 && distanceFromSupport <= 0.25) {
@@ -154,9 +153,14 @@ export function calculateWheelScore(stock, weights = {}) {
     technicalScore += 2
   }
 
-  score += technicalScore
+  const weightedScore =
+    (roicScore / 25) * defaultWeights.roic +
+    (volumeScore / 20) * defaultWeights.volume +
+    (volatilityScore / 15) * defaultWeights.volatility +
+    (fundamentalScore / 25) * defaultWeights.fundamentals +
+    (technicalScore / 15) * defaultWeights.technicals
 
-  return Math.min(100, Math.max(0, score))
+  return Math.round(Math.min(1, Math.max(0, weightedScore)) * 100)
 }
 
 // Ranking functions
