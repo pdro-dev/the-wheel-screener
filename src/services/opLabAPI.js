@@ -3,15 +3,16 @@ import { useResultCache } from '../hooks/usePerformance'
 
 // API Configuration
 export const API_CONFIG = {
-  baseURL: '/api',
+  // Base URL now defaults to the official OpLab API but can be overridden
+  baseURL: import.meta?.env?.VITE_OPLAB_API_URL || 'https://api.oplab.com.br/v3',
   timeout: 30000,
   retryAttempts: 3,
   retryDelay: 1000,
   cache: {
     instruments: 5 * 60 * 1000, // 5 minutes
-    quotes: 30 * 1000,          // 30 seconds
+    quotes: 30 * 1000, // 30 seconds
     fundamentals: 10 * 60 * 1000, // 10 minutes
-    screening: 2 * 60 * 1000    // 2 minutes
+    screening: 2 * 60 * 1000 // 2 minutes
   }
 }
 
@@ -133,7 +134,7 @@ export class OpLabAPIService {
           ...options,
           headers: {
             'Content-Type': 'application/json',
-            ...(this.token && { 'x-oplab-token': this.token }),
+            ...(this.token && { 'Access-Token': this.token }),
             ...options.headers
           },
           signal: controller.signal

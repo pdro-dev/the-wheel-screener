@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState, useRef } from 'react'
 
+// Base URL for OpLab API (can be overridden via environment variable)
+const API_BASE_URL = import.meta.env.VITE_OPLAB_API_URL || 'https://api.oplab.com.br/v3'
+
 // OpLab API state context
 const OPLAB_STATE = {
   token: null,
@@ -110,10 +113,10 @@ export function useOpLabAPI() {
     setIsLoading(true)
 
     try {
-      const response = await fetch(`/api${endpoint}`, {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers: {
-          'x-oplab-token': opLabState.token,
+          'Access-Token': opLabState.token,
           'Content-Type': 'application/json',
           ...options.headers
         },
@@ -185,9 +188,9 @@ export function useOpLabInit() {
       setToken(token)
       
       // Test the token by making a simple API call
-      const response = await fetch('/api/user', {
+      const response = await fetch(`${API_BASE_URL}/user`, {
         headers: {
-          'x-oplab-token': token,
+          'Access-Token': token,
           'Content-Type': 'application/json'
         }
       })
@@ -220,7 +223,7 @@ export function useOpLabService() {
 
   const getInstruments = useCallback(async (filters = {}) => {
     return api.makeRequest('/instruments', {
-      method: 'GET',
+      method: 'POST',
       body: JSON.stringify(filters)
     })
   }, [api])
