@@ -525,6 +525,56 @@ export function TokenConfiguration({ onTokenSave }) {
   )
 }
 
+// Refresh interval settings component
+export function APIRefreshSettings() {
+  const { refreshIntervals, setRefreshInterval } = useOpLabState()
+  const endpoints = [
+    { key: 'instruments', label: 'Instruments' },
+    { key: 'quotes', label: 'Quotes' },
+    { key: 'fundamentals', label: 'Fundamentals' },
+    { key: 'options', label: 'Options' },
+    { key: 'screening', label: 'Screening' }
+  ]
+
+  const handleChange = (key, value) => {
+    const ms = Math.max(Number(value) || 0, 0) * 1000
+    setRefreshInterval(key, ms)
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center space-x-2">
+          <Settings className="h-5 w-5" />
+          <span>Intervalos de Atualização</span>
+        </CardTitle>
+        <CardDescription>
+          Defina os intervalos (em segundos) para atualização automática de cada endpoint
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {endpoints.map(ep => (
+            <div key={ep.key} className="flex items-center space-x-2">
+              <Label htmlFor={`refresh-${ep.key}`} className="w-32">
+                {ep.label}
+              </Label>
+              <Input
+                id={`refresh-${ep.key}`}
+                type="number"
+                min="0"
+                value={Math.floor((refreshIntervals[ep.key] || 0) / 1000)}
+                onChange={(e) => handleChange(ep.key, e.target.value)}
+              />
+              <span className="text-sm text-muted-foreground">s</span>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default {
   ConnectionStatus,
   UserInfo,
@@ -533,5 +583,6 @@ export default {
   APIDashboard,
   InlineAPIStatus,
   APIErrorFallback,
-  TokenConfiguration
+  TokenConfiguration,
+  APIRefreshSettings
 }
