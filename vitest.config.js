@@ -14,5 +14,9 @@ export default defineConfig({
   server: {
     host: true,
     allowedHosts: ['all']
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true
   }
 })
