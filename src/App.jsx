@@ -46,10 +46,9 @@ import {
   useAsyncState,
   useRetry
 } from '@/components/LoadingStates'
-import { 
-  TokenConfiguration, 
-  APIDashboard, 
-  InlineAPIStatus 
+import {
+  TokenConfiguration,
+  InlineAPIStatus
 } from '@/components/APIIntegration'
 
 // Import Analytics Components
@@ -59,8 +58,11 @@ import { RateLimitingDashboard } from '@/components/analytics/RateLimitingDashbo
 import { UserActivityTracker } from '@/components/analytics/UserActivityTracker'
 
 // Import utilities
-import { generateMockStocks, applyFilters, exportToCSV, calculatePortfolioMetrics } from '@/utils/screening'
+import { applyFilters, calculatePortfolioMetrics } from '@/utils/screening'
 import { ScreeningUtils } from '@/services/opLabAPI'
+import { AssetGrid } from '@/components/AssetGrid'
+import { OptionsGrid } from '@/components/OptionsGrid'
+import { Login } from '@/components/Login'
 
 import './App.css'
 
@@ -104,12 +106,10 @@ function App() {
   const { sanitizeInput, validateFilter } = useFormValidation()
 
   // Token and API state
-  const { 
-    isAuthenticated, 
-    isOnline, 
-    token,
-    lastError,
-    setToken 
+  const {
+    isAuthenticated,
+    isOnline,
+    setToken
   } = useOpLabState()
 
   // Filter state with optimization
@@ -132,7 +132,6 @@ function App() {
   }, 300)
 
   // App state
-  const [showTokenConfig, setShowTokenConfig] = useState(!token && !isAuthenticated)
   const [showMobileFilters, setShowMobileFilters] = useState(false)
   const [selectedStocks, setSelectedStocks] = useState([])
   const [viewMode, setViewMode] = useState(isMobile ? 'mobile' : 'desktop')
@@ -144,8 +143,7 @@ function App() {
     isScreening,
     progress,
     runScreening,
-    exportResults,
-    hasResults
+    exportResults
   } = useWheelScreening()
 
   // Cache for results
@@ -154,26 +152,9 @@ function App() {
   // Retry functionality
   const { retry, attempts, isRetrying, canRetry, reset: resetRetry } = useRetry(3, 2000)
 
-  // Mock data fallback
-  const mockData = useMemo(() => {
-    return generateMockStocks(50, {
-      minPrice: 10,
-      maxPrice: 150,
-      minVolume: 50000
-    })
-  }, [])
-
-  // Current results (API or mock)
-  const currentResults = useMemo(() => {
-    if (hasResults && apiResults.length > 0) {
-      return apiResults
-    }
-    return mockData
-  }, [apiResults, hasResults, mockData])
-
   // Filtered and sorted results
   const processedResults = useMemo(() => {
-    const filtered = applyFilters(currentResults, debouncedFilters)
+    const filtered = applyFilters(apiResults, debouncedFilters)
     
     if (debouncedFilters.sortBy) {
       return filtered.sort((a, b) => {
@@ -188,7 +169,7 @@ function App() {
     }
     
     return filtered
-  }, [currentResults, debouncedFilters])
+  }, [apiResults, debouncedFilters])
 
   // Portfolio metrics
   const portfolioMetrics = useMemo(() => {
@@ -196,28 +177,17 @@ function App() {
   }, [processedResults])
 
   // Async screening function
-  const { data: screeningData, loading: screeningLoading, execute: executeScreening } = useAsyncState(
+  const { loading: screeningLoading, execute: executeScreening } = useAsyncState(
     async (filters) => {
-      // Try API first if authenticated
-      if (isAuthenticated && isOnline) {
-        const cacheKey = JSON.stringify(filters)
-        const cached = resultCache.get(cacheKey)
-        if (cached) return cached
+      const cacheKey = JSON.stringify(filters)
+      const cached = resultCache.get(cacheKey)
+      if (cached) return cached
 
-        try {
-          const results = await runScreening(filters)
-          resultCache.set(cacheKey, results)
-          return results
-        } catch (error) {
-          console.warn('API screening failed, using mock data:', error)
-          return mockData
-        }
-      }
-      
-      // Use mock data
-      return applyFilters(mockData, filters)
+      const results = await runScreening(filters)
+      resultCache.set(cacheKey, results)
+      return results
     },
-    [isAuthenticated, isOnline, runScreening, mockData, resultCache]
+    [runScreening, resultCache]
   )
 
   // Handle screening
@@ -249,15 +219,13 @@ function App() {
   // Handle export
   const handleExport = useCallback(() => {
     try {
-      if (hasResults && isAuthenticated) {
+      if (apiResults.length > 0 && isAuthenticated) {
         exportResults('csv')
-      } else {
-        exportToCSV(processedResults, 'wheel-screening-mock')
       }
     } catch (error) {
       console.error('Export failed:', error)
     }
-  }, [hasResults, isAuthenticated, exportResults, processedResults])
+  }, [apiResults, isAuthenticated, exportResults])
 
   // Handle stock selection
   const handleStockSelect = useCallback((stock, isSelected) => {
@@ -271,7 +239,6 @@ function App() {
   // Token configuration
   const handleTokenSave = useCallback((newToken) => {
     setToken(newToken)
-    setShowTokenConfig(false)
     // Trigger a new screening with the configured token
     setTimeout(() => handleScreening(), 1000)
   }, [setToken, handleScreening])
@@ -335,27 +302,27 @@ function App() {
   const tableColumns = useMemo(() => [
     { key: 'symbol', title: 'Símbolo', sortable: true },
     { key: 'name', title: 'Nome', sortable: true },
-    { 
-      key: 'price', 
-      title: 'Preço', 
+    {
+      key: 'price',
+      title: 'Preço',
       sortable: true,
       render: (value) => ScreeningUtils.formatCurrency(value)
     },
-    { 
-      key: 'volume', 
-      title: 'Volume', 
+    {
+      key: 'volume',
+      title: 'Volume',
       sortable: true,
       render: (value) => ScreeningUtils.formatVolume(value)
     },
-    { 
-      key: 'roic', 
-      title: 'ROIC', 
+    {
+      key: 'roic',
+      title: 'ROIC',
       sortable: true,
       render: (value) => `${ScreeningUtils.formatNumber(value, 1)}%`
     },
-    { 
-      key: 'score', 
-      title: 'Score', 
+    {
+      key: 'score',
+      title: 'Score',
       sortable: true,
       render: (value) => (
         <Badge variant={value >= 80 ? 'default' : value >= 60 ? 'secondary' : 'outline'}>
@@ -365,6 +332,11 @@ function App() {
     },
     { key: 'sector', title: 'Setor', sortable: true }
   ], [])
+
+  // Require authentication before rendering application
+  if (!isAuthenticated) {
+    return <Login />
+  }
 
   // Render mobile version
   if (isMobile) {
@@ -385,12 +357,6 @@ function App() {
 
           <ConnectionStatus compact />
           
-          {showTokenConfig && (
-            <div className="p-4">
-              <TokenConfiguration onTokenSave={handleTokenSave} />
-            </div>
-          )}
-
           <MobileMetrics metrics={mobileMetrics} />
 
           <MobileFilters
@@ -472,10 +438,22 @@ function App() {
 
           {/* Navigation Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-8">
               <TabsTrigger value="screening" className="flex items-center gap-2">
                 <Search className="h-4 w-4" />
                 Screening
+              </TabsTrigger>
+              <TabsTrigger value="assets" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Ativos
+              </TabsTrigger>
+              <TabsTrigger value="options" className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Opções
+              </TabsTrigger>
+              <TabsTrigger value="api-config" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Config API
               </TabsTrigger>
               <TabsTrigger value="api-metrics" className="flex items-center gap-2">
                 <Activity className="h-4 w-4" />
@@ -500,10 +478,6 @@ function App() {
               <ConnectionStatus />
 
           {/* Token Configuration */}
-          {showTokenConfig && (
-            <TokenConfiguration onTokenSave={handleTokenSave} />
-          )}
-
           {/* Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
@@ -726,6 +700,21 @@ function App() {
           )}
             </TabsContent>
 
+            {/* Assets Tab */}
+            <TabsContent value="assets">
+              <AssetGrid />
+            </TabsContent>
+
+            {/* Options Tab */}
+            <TabsContent value="options">
+              <OptionsGrid />
+            </TabsContent>
+
+            {/* API Config Tab */}
+            <TabsContent value="api-config">
+              <TokenConfiguration onTokenSave={handleTokenSave} />
+            </TabsContent>
+
             {/* API Metrics Tab */}
             <TabsContent value="api-metrics">
               <APIMetricsDashboard />
@@ -750,10 +739,8 @@ function App() {
           {/* Footer */}
           <div className="text-center text-sm text-muted-foreground">
             <p>
-              {isAuthenticated && isOnline ? (
+              {isAuthenticated && isOnline && (
                 <>Dados em tempo real via API OpLab • </>
-              ) : (
-                <>Dados simulados para demonstração • </>
               )}
               Desenvolvido com ❤️ para a comunidade de investidores brasileiros
             </p>
