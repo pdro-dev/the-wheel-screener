@@ -5,8 +5,8 @@ const API_BASE_URL = import.meta.env.VITE_OPLAB_API_URL || 'https://api.oplab.co
 
 // Basic in-memory users for simple authentication
 const VALID_USERS = {
-  admin: 'asd',
-  user: 'asd'
+  admin: 'admin',
+  user: 'user'
 }
 
 // OpLab API state context

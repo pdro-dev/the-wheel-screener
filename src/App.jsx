@@ -421,6 +421,12 @@ function App() {
               <h1 className="text-3xl font-bold tracking-tight">The Wheel Screener</h1>
               <p className="text-muted-foreground">
                 Identifique as melhores oportunidades para a estratégia "The Wheel"
+                {user && (
+                  <span className="ml-2">
+                    • Usuário: <span className="font-semibold capitalize">{user.name}</span>
+                    {user.name === 'admin' && <span className="text-blue-600"> (Administrador)</span>}
+                  </span>
+                )}
               </p>
             </div>
             <div className="flex items-center space-x-4">
@@ -433,12 +439,19 @@ function App() {
                 <Download className="h-4 w-4 mr-2" />
                 Exportar CSV
               </Button>
+              <Button 
+                onClick={logout}
+                variant="outline"
+                size="sm"
+              >
+                Sair
+              </Button>
             </div>
           </div>
 
           {/* Navigation Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-8">
+            <TabsList className={`grid w-full ${user?.name === 'admin' ? 'grid-cols-8' : 'grid-cols-4'}`}>
               <TabsTrigger value="screening" className="flex items-center gap-2">
                 <Search className="h-4 w-4" />
                 Screening
@@ -455,22 +468,27 @@ function App() {
                 <Settings className="h-4 w-4" />
                 Config API
               </TabsTrigger>
-              <TabsTrigger value="api-metrics" className="flex items-center gap-2">
-                <Activity className="h-4 w-4" />
-                API Metrics
-              </TabsTrigger>
-              <TabsTrigger value="performance" className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Performance
-              </TabsTrigger>
-              <TabsTrigger value="rate-limiting" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Rate Limiting
-              </TabsTrigger>
-              <TabsTrigger value="user-activity" className="flex items-center gap-2">
-                <PieChart className="h-4 w-4" />
-                User Activity
-              </TabsTrigger>
+              {/* Admin-only tabs */}
+              {user?.name === 'admin' && (
+                <>
+                  <TabsTrigger value="api-metrics" className="flex items-center gap-2">
+                    <Activity className="h-4 w-4" />
+                    API Metrics
+                  </TabsTrigger>
+                  <TabsTrigger value="performance" className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Performance
+                  </TabsTrigger>
+                  <TabsTrigger value="rate-limiting" className="flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Rate Limiting
+                  </TabsTrigger>
+                  <TabsTrigger value="user-activity" className="flex items-center gap-2">
+                    <PieChart className="h-4 w-4" />
+                    User Activity
+                  </TabsTrigger>
+                </>
+              )}
             </TabsList>
 
             {/* Screening Tab */}
@@ -715,25 +733,30 @@ function App() {
               <TokenConfiguration onTokenSave={handleTokenSave} />
             </TabsContent>
 
-            {/* API Metrics Tab */}
-            <TabsContent value="api-metrics">
-              <APIMetricsDashboard />
-            </TabsContent>
+            {/* Admin-only tabs content */}
+            {user?.name === 'admin' && (
+              <>
+                {/* API Metrics Tab */}
+                <TabsContent value="api-metrics">
+                  <APIMetricsDashboard />
+                </TabsContent>
 
-            {/* Performance Tab */}
-            <TabsContent value="performance">
-              <PerformanceMonitor />
-            </TabsContent>
+                {/* Performance Tab */}
+                <TabsContent value="performance">
+                  <PerformanceMonitor />
+                </TabsContent>
 
-            {/* Rate Limiting Tab */}
-            <TabsContent value="rate-limiting">
-              <RateLimitingDashboard />
-            </TabsContent>
+                {/* Rate Limiting Tab */}
+                <TabsContent value="rate-limiting">
+                  <RateLimitingDashboard />
+                </TabsContent>
 
-            {/* User Activity Tab */}
-            <TabsContent value="user-activity">
-              <UserActivityTracker />
-            </TabsContent>
+                {/* User Activity Tab */}
+                <TabsContent value="user-activity">
+                  <UserActivityTracker />
+                </TabsContent>
+              </>
+            )}
           </Tabs>
 
           {/* Footer */}
