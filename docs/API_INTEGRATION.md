@@ -379,13 +379,18 @@ describe('OpLabAPIService', () => {
 })
 ```
 
-### Testes de Integração  
+### Testes de Integração
+
+Para testes completos, instancie `OpLabAPIService` com um token de API e execute o screening através do serviço:
+
 ```javascript
 // src/__tests__/integration/api.test.js
 describe('API Integration', () => {
   it('should perform end-to-end screening', async () => {
+    const token = 'test-token'
+    const service = new OpLabAPIService(token)
     const filters = { minPrice: 20, maxPrice: 50 }
-    const results = await performWheelScreening(filters)
+    const results = await service.performWheelScreening(filters)
     expect(results.length).toBeGreaterThan(0)
   })
 })
