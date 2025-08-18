@@ -9,6 +9,15 @@ const VALID_USERS = {
   user: 'user'
 }
 
+// Default refresh intervals in milliseconds for each endpoint
+const DEFAULT_REFRESH_INTERVALS = {
+  instruments: 5 * 60 * 1000, // 5 minutes
+  quotes: 30 * 1000, // 30 seconds
+  fundamentals: 10 * 60 * 1000, // 10 minutes
+  options: 2 * 60 * 1000, // 2 minutes
+  screening: 2 * 60 * 1000 // 2 minutes
+}
+
 // OpLab API state context
 const OPLAB_STATE = {
   token: null,
@@ -20,7 +29,8 @@ const OPLAB_STATE = {
     resetTime: null
   },
   lastError: null,
-  isOnline: navigator.onLine
+  isOnline: navigator.onLine,
+  refreshIntervals: { ...DEFAULT_REFRESH_INTERVALS }
 }
 
 let globalState = { ...OPLAB_STATE }
@@ -84,6 +94,15 @@ export function useOpLabState() {
     setGlobalState({ lastError: error })
   }, [])
 
+  const setRefreshInterval = useCallback((endpoint, value) => {
+    const newIntervals = {
+      ...globalState.refreshIntervals,
+      [endpoint]: value
+    }
+    updateState({ refreshIntervals: newIntervals })
+    localStorage.setItem('oplab_refresh_intervals', JSON.stringify(newIntervals))
+  }, [updateState])
+
   const updateLimits = useCallback((limits) => {
     setGlobalState({ limits: { ...globalState.limits, ...limits } })
   }, [])
@@ -95,6 +114,23 @@ export function useOpLabState() {
       setToken(savedToken)
     }
   }, [setToken])
+
+  // Load refresh intervals from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('oplab_refresh_intervals')
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        updateState({
+          refreshIntervals: { ...DEFAULT_REFRESH_INTERVALS, ...parsed }
+        })
+      } catch {
+        updateState({ refreshIntervals: { ...DEFAULT_REFRESH_INTERVALS } })
+      }
+    } else {
+      updateState({ refreshIntervals: { ...DEFAULT_REFRESH_INTERVALS } })
+    }
+  }, [updateState])
 
   // Monitor online status
   useEffect(() => {
@@ -117,6 +153,7 @@ export function useOpLabState() {
     logout,
     setError,
     updateLimits,
+    setRefreshInterval,
     updateState
   }
 }
@@ -126,6 +163,7 @@ export function __resetOpLabState() {
   globalState = { ...OPLAB_STATE }
   listeners.forEach((l) => l(globalState))
   localStorage.removeItem('oplab_token')
+  localStorage.removeItem('oplab_refresh_intervals')
 }
 
 // Hook for basic OpLab API calls
@@ -397,10 +435,18 @@ export function useInstruments(filters = {}) {
   }, [api, filters])
 
   useEffect(() => {
+    let intervalId
     if (api.isAuthenticated) {
       fetchInstruments()
+      const interval = api.refreshIntervals?.instruments
+      if (interval && interval > 0) {
+        intervalId = setInterval(fetchInstruments, interval)
+      }
     }
-  }, [fetchInstruments, api.isAuthenticated])
+    return () => {
+      if (intervalId) clearInterval(intervalId)
+    }
+  }, [fetchInstruments, api.isAuthenticated, api.refreshIntervals?.instruments])
 
   return {
     instruments,
@@ -438,10 +484,18 @@ export function useQuotes(symbols = []) {
   }, [api, symbols])
 
   useEffect(() => {
+    let intervalId
     if (api.isAuthenticated && symbols.length > 0) {
       fetchQuotes()
+      const interval = api.refreshIntervals?.quotes
+      if (interval && interval > 0) {
+        intervalId = setInterval(fetchQuotes, interval)
+      }
     }
-  }, [fetchQuotes, api.isAuthenticated, symbols])
+    return () => {
+      if (intervalId) clearInterval(intervalId)
+    }
+  }, [fetchQuotes, api.isAuthenticated, symbols, api.refreshIntervals?.quotes])
 
   return {
     quotes,
@@ -476,10 +530,18 @@ export function useFundamentals(symbol) {
   }, [api, symbol])
 
   useEffect(() => {
+    let intervalId
     if (api.isAuthenticated && symbol) {
       fetchFundamentals()
+      const interval = api.refreshIntervals?.fundamentals
+      if (interval && interval > 0) {
+        intervalId = setInterval(fetchFundamentals, interval)
+      }
     }
-  }, [fetchFundamentals, api.isAuthenticated, symbol])
+    return () => {
+      if (intervalId) clearInterval(intervalId)
+    }
+  }, [fetchFundamentals, api.isAuthenticated, symbol, api.refreshIntervals?.fundamentals])
 
   return {
     fundamentals,
