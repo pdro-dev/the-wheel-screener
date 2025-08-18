@@ -1,5 +1,4 @@
 // OpLab API Service for The Wheel Screener
-import { useResultCache } from '../hooks/usePerformance'
 
 // API Configuration
 export const API_CONFIG = {
@@ -8,11 +7,14 @@ export const API_CONFIG = {
   timeout: 30000,
   retryAttempts: 3,
   retryDelay: 1000,
-  cache: {
-    instruments: 5 * 60 * 1000, // 5 minutes
-    quotes: 30 * 1000, // 30 seconds
-    fundamentals: 10 * 60 * 1000, // 10 minutes
-    screening: 2 * 60 * 1000 // 2 minutes
+  refreshIntervals: {
+    instruments: 15 * 60 * 1000,
+    quotes: 15 * 60 * 1000,
+    fundamentals: 15 * 60 * 1000,
+    options: 15 * 60 * 1000,
+    screening: 15 * 60 * 1000,
+    user: 15 * 60 * 1000,
+    health: 15 * 60 * 1000
   }
 }
 
@@ -24,6 +26,12 @@ export const API_ENDPOINTS = {
   screening: '/market/screening',
   user: '/user',
   health: '/health'
+}
+
+export function setRefreshInterval(endpoint, ms) {
+  if (typeof ms === 'number' && ms >= 0) {
+    API_CONFIG.refreshIntervals[endpoint] = ms
+  }
 }
 
 // Custom error class for OpLab API
@@ -208,10 +216,11 @@ export class OpLabAPIService {
   }
 
   getCacheTTL(endpoint) {
-    if (endpoint.includes('/instruments')) return API_CONFIG.cache.instruments
-    if (endpoint.includes('/quotes')) return API_CONFIG.cache.quotes
-    if (endpoint.includes('/fundamentals')) return API_CONFIG.cache.fundamentals
-    if (endpoint.includes('/screening')) return API_CONFIG.cache.screening
+    for (const [key, path] of Object.entries(API_ENDPOINTS)) {
+      if (endpoint.includes(path)) {
+        return API_CONFIG.refreshIntervals[key] ?? 0
+      }
+    }
     return 0
   }
 
