@@ -9,7 +9,9 @@ import {
   AlertCircle,
   Menu,
   RefreshCw,
-  Filter
+  Filter,
+  Activity,
+  PieChart
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,6 +21,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 // Import custom hooks
 import { useOptimizedFilters, useDebounce, useResultCache } from '@/hooks/usePerformance'
@@ -48,6 +51,12 @@ import {
   APIDashboard, 
   InlineAPIStatus 
 } from '@/components/APIIntegration'
+
+// Import Analytics Components
+import { APIMetricsDashboard } from '@/components/analytics/APIMetricsDashboard'
+import { PerformanceMonitor } from '@/components/analytics/PerformanceMonitor'
+import { RateLimitingDashboard } from '@/components/analytics/RateLimitingDashboard'
+import { UserActivityTracker } from '@/components/analytics/UserActivityTracker'
 
 // Import utilities
 import { generateMockStocks, applyFilters, exportToCSV, calculatePortfolioMetrics } from '@/utils/screening'
@@ -127,6 +136,7 @@ function App() {
   const [showMobileFilters, setShowMobileFilters] = useState(false)
   const [selectedStocks, setSelectedStocks] = useState([])
   const [viewMode, setViewMode] = useState(isMobile ? 'mobile' : 'desktop')
+  const [activeTab, setActiveTab] = useState('screening')
 
   // Wheel screening hook
   const {
@@ -439,7 +449,7 @@ function App() {
     <ErrorBoundary>
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header */}
+          {/* Header with Navigation */}
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">The Wheel Screener</h1>
@@ -460,7 +470,34 @@ function App() {
             </div>
           </div>
 
-          <ConnectionStatus />
+          {/* Navigation Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="screening" className="flex items-center gap-2">
+                <Search className="h-4 w-4" />
+                Screening
+              </TabsTrigger>
+              <TabsTrigger value="api-metrics" className="flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                API Metrics
+              </TabsTrigger>
+              <TabsTrigger value="performance" className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Performance
+              </TabsTrigger>
+              <TabsTrigger value="rate-limiting" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Rate Limiting
+              </TabsTrigger>
+              <TabsTrigger value="user-activity" className="flex items-center gap-2">
+                <PieChart className="h-4 w-4" />
+                User Activity
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Screening Tab */}
+            <TabsContent value="screening" className="space-y-6">
+              <ConnectionStatus />
 
           {/* Token Configuration */}
           {showTokenConfig && (
@@ -687,6 +724,28 @@ function App() {
               </CardContent>
             </Card>
           )}
+            </TabsContent>
+
+            {/* API Metrics Tab */}
+            <TabsContent value="api-metrics">
+              <APIMetricsDashboard />
+            </TabsContent>
+
+            {/* Performance Tab */}
+            <TabsContent value="performance">
+              <PerformanceMonitor />
+            </TabsContent>
+
+            {/* Rate Limiting Tab */}
+            <TabsContent value="rate-limiting">
+              <RateLimitingDashboard />
+            </TabsContent>
+
+            {/* User Activity Tab */}
+            <TabsContent value="user-activity">
+              <UserActivityTracker />
+            </TabsContent>
+          </Tabs>
 
           {/* Footer */}
           <div className="text-center text-sm text-muted-foreground">
