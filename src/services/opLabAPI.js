@@ -20,6 +20,7 @@ export const API_ENDPOINTS = {
   instruments: '/instruments',
   quotes: '/quotes',
   fundamentals: '/fundamentals',
+  options: '/options',
   screening: '/screening',
   user: '/user',
   health: '/health'
@@ -235,6 +236,13 @@ export class OpLabAPIService {
 
   async getFundamentals(symbol) {
     return this.makeRequest(`${API_ENDPOINTS.fundamentals}/${symbol}`)
+  }
+
+  async getOptions(symbol, filters = {}) {
+    return this.makeRequest(API_ENDPOINTS.options, {
+      method: 'POST',
+      body: JSON.stringify({ symbol, ...filters })
+    })
   }
 
   async getUserInfo() {

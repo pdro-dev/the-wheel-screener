@@ -30,6 +30,7 @@ export const API_CONFIG = {
 - `/instruments` - Lista de instrumentos financeiros
 - `/quotes` - Cotações em tempo real
 - `/fundamentals/{symbol}` - Dados fundamentalistas
+- `/options` - Cadeia de opções do ativo
 - `/screening` - Screening personalizado
 - `/user` - Informações do usuário
 - `/health` - Status da API

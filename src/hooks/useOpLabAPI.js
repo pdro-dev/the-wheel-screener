@@ -239,6 +239,13 @@ export function useOpLabService() {
     return api.makeRequest(`/fundamentals/${symbol}`)
   }, [api])
 
+  const getOptions = useCallback(async (symbol, filters = {}) => {
+    return api.makeRequest('/options', {
+      method: 'POST',
+      body: JSON.stringify({ symbol, ...filters })
+    })
+  }, [api])
+
   const testConnection = useCallback(async () => {
     try {
       await api.makeRequest('/health')
@@ -252,6 +259,7 @@ export function useOpLabService() {
     getInstruments,
     getQuotes,
     getFundamentals,
+    getOptions,
     testConnection,
     ...api
   }
