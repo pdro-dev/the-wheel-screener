@@ -3,6 +3,12 @@ import { useCallback, useEffect, useState, useRef } from 'react'
 // Base URL for OpLab API (can be overridden via environment variable)
 const API_BASE_URL = import.meta.env.VITE_OPLAB_API_URL || 'https://api.oplab.com.br/v3'
 
+// Basic in-memory users for simple authentication
+const VALID_USERS = {
+  admin: 'asd',
+  user: 'asd'
+}
+
 // OpLab API state context
 const OPLAB_STATE = {
   token: null,
@@ -17,21 +23,34 @@ const OPLAB_STATE = {
   isOnline: navigator.onLine
 }
 
+let globalState = { ...OPLAB_STATE }
+const listeners = new Set()
+
+const setGlobalState = (updates) => {
+  globalState = { ...globalState, ...updates }
+  listeners.forEach((l) => l(globalState))
+}
+
 // Hook for managing OpLab API state
 export function useOpLabState() {
-  const [state, setState] = useState(OPLAB_STATE)
+  const [state, setState] = useState(globalState)
+
+  useEffect(() => {
+    const listener = (newState) => setState(newState)
+    listeners.add(listener)
+    return () => listeners.delete(listener)
+  }, [])
 
   const updateState = useCallback((updates) => {
-    setState(prev => ({ ...prev, ...updates }))
+    setGlobalState(updates)
   }, [])
 
   const setToken = useCallback((token) => {
-    updateState({ 
-      token, 
-      isAuthenticated: !!token,
-      lastError: null 
+    updateState({
+      token,
+      lastError: null
     })
-    
+
     if (token) {
       localStorage.setItem('oplab_token', token)
     } else {
@@ -39,7 +58,17 @@ export function useOpLabState() {
     }
   }, [updateState])
 
-  const clearAuth = useCallback(() => {
+  const login = useCallback((username, password) => {
+    const validPassword = VALID_USERS[username]
+    if (validPassword && validPassword === password) {
+      updateState({ isAuthenticated: true, user: { name: username }, lastError: null })
+      return true
+    }
+    updateState({ isAuthenticated: false, user: null, lastError: 'Credenciais inválidas' })
+    return false
+  }, [updateState])
+
+  const logout = useCallback(() => {
     updateState({
       token: null,
       isAuthenticated: false,
@@ -50,12 +79,12 @@ export function useOpLabState() {
   }, [updateState])
 
   const setError = useCallback((error) => {
-    updateState({ lastError: error })
-  }, [updateState])
+    setGlobalState({ lastError: error })
+  }, [])
 
   const updateLimits = useCallback((limits) => {
-    updateState({ limits: { ...state.limits, ...limits } })
-  }, [updateState, state.limits])
+    setGlobalState({ limits: { ...globalState.limits, ...limits } })
+  }, [])
 
   // Load token from localStorage on mount
   useEffect(() => {
@@ -82,7 +111,8 @@ export function useOpLabState() {
   return {
     ...state,
     setToken,
-    clearAuth,
+    login,
+    logout,
     setError,
     updateLimits,
     updateState
@@ -175,45 +205,6 @@ export function useOpLabAPI() {
     isLoading,
     cancel,
     ...opLabState
-  }
-}
-
-// Hook for initializing OpLab API service
-export function useOpLabInit() {
-  const { setToken, setError, updateState } = useOpLabState()
-  const [isInitialized, setIsInitialized] = useState(false)
-
-  const initialize = useCallback(async (token) => {
-    try {
-      setToken(token)
-      
-      // Test the token by making a simple API call
-      const response = await fetch(`${API_BASE_URL}/user`, {
-        headers: {
-          'Access-Token': token,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        const userData = await response.json()
-        updateState({ user: userData })
-        setIsInitialized(true)
-        return true
-      } else {
-        throw new Error('Token inválido')
-      }
-    } catch (error) {
-      setError(error.message)
-      setToken(null)
-      setIsInitialized(false)
-      return false
-    }
-  }, [setToken, setError, updateState])
-
-  return {
-    initialize,
-    isInitialized
   }
 }
 
