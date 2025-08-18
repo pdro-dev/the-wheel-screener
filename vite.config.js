@@ -16,20 +16,14 @@ export default defineConfig({
     },
   },
   server: {
+    host: true,
+    allowedHosts: ['all'],
     proxy: {
       '/api': {
-        target: 'https://api.oplab.com.br/v3',
+        target: 'https://5000-idjrr0ntzomjfm3x9dxgr-4f9c3993.manusvm.computer',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-        configure: (proxy) => {
-          proxy.on('proxyReq', (proxyReq, req) => {
-            // Token será fornecido pelo usuário via interface
-            const token = req.headers['x-oplab-token'];
-            if (token) {
-              proxyReq.setHeader('Access-Token', token);
-            }
-          })
-        }
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, '/api')
       }
     }
   }
