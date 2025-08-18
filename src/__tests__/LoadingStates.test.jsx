@@ -387,16 +387,18 @@ describe('LoadingStates Hooks', () => {
       render(<TestComponent />)
       
       const mockFn = vi.fn().mockRejectedValue(new Error('Always fails'))
-      
+
       await act(async () => {
         try {
           await hookResult.retry(mockFn)
         } catch (error) {
-          // Expected to fail
+          // First attempt fails
         }
+
+        await expect(hookResult.retry(mockFn)).rejects.toThrow('Always fails')
       })
-      
-      expect(mockFn).toHaveBeenCalledTimes(1)
+
+      expect(mockFn).toHaveBeenCalledTimes(2)
       expect(hookResult.attempts).toBe(2)
     })
 
