@@ -109,7 +109,9 @@ function App() {
   const {
     isAuthenticated,
     isOnline,
-    setToken
+    setToken,
+    logout,
+    user
   } = useOpLabState()
 
   // Filter state with optimization
