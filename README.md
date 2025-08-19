@@ -353,3 +353,21 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 
 *Desenvolvido com ❤️ e 🔒 segurança para a comunidade de investidores brasileiros*
 
+
+## 🧪 Testes
+
+### Backend
+1. Instale as dependências mínimas:
+   ```bash
+   pip install -r backend-oplab/requirements.txt
+   ```
+2. Execute os testes com `pytest` (configurado via `pytest.ini`):
+   ```bash
+   pytest
+   ```
+
+### Frontend
+Execute os testes do frontend usando Vitest:
+```bash
+pnpm test
+```
