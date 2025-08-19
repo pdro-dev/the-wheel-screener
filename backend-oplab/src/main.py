@@ -3,15 +3,16 @@ import sys
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-import json
-import time
-import logging
-from flask import Flask, send_from_directory, request, g
+from flask import Flask, send_from_directory
 from flask_cors import CORS
-from src.models.user import db
-from src.models.audit import AuditLog
+from apscheduler.schedulers.background import BackgroundScheduler
+from src.models import db
+from src.models.user import User
+from src.models.instrument import Instrument
+from src.models.quote import Quote
+from src.models.fundamental import Fundamental
 from src.routes.user import user_bp
-from src.routes.oplab import oplab_bp, metrics
+from src.routes.oplab import oplab_bp, sync_market_data
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
@@ -22,60 +23,23 @@ CORS(app, origins="*")
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(oplab_bp)
 
-# uncomment if you need to use database
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    DATABASE_URL = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 with app.app_context():
     db.create_all()
+    sync_market_data()
 
+def scheduled_sync():
+    with app.app_context():
+        sync_market_data()
 
-logger = logging.getLogger("oplab")
-if not logger.handlers:
-    handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter('%(message)s'))
-    logger.addHandler(handler)
-logger.setLevel(logging.INFO)
-
-
-@app.before_request
-def start_request():
-    if request.path.startswith('/api'):
-        g.start_time = time.time()
-        g.cache_hits_before = metrics['cache_hits']
-
-
-@app.after_request
-def log_request(response):
-    if request.path.startswith('/api') and hasattr(g, 'start_time'):
-        duration = time.time() - g.start_time
-        cache_hits = metrics['cache_hits'] - g.cache_hits_before
-        metrics['requests'] += 1
-        metrics['total_response_time'] += duration
-        error_msg = None
-        if response.status_code >= 400:
-            try:
-                error_msg = response.get_json().get('error')
-            except Exception:
-                pass
-        log_entry = {
-            'event': 'request',
-            'endpoint': request.path,
-            'duration': duration,
-            'cache_hits': cache_hits,
-            'status': response.status_code
-        }
-        if error_msg:
-            log_entry['error'] = error_msg
-        logger.info(json.dumps(log_entry))
-        audit = AuditLog(endpoint=request.path,
-                         response_time=duration,
-                         cache_hits=cache_hits,
-                         status=response.status_code,
-                         error=error_msg)
-        db.session.add(audit)
-        db.session.commit()
-    return response
+scheduler = BackgroundScheduler()
+scheduler.add_job(scheduled_sync, 'interval', hours=24)
+scheduler.start()
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')

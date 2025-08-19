@@ -193,7 +193,7 @@ export function useOpLabAPI() {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers: {
-          'Access-Token': opLabState.token,
+          'x-oplab-token': opLabState.token,
           'Content-Type': 'application/json',
           ...options.headers
         },
@@ -260,24 +260,21 @@ export function useOpLabService() {
   const api = useOpLabAPI()
 
   const getInstruments = useCallback(async (filters = {}) => {
-    const data = await api.makeRequest('/instruments', {
+    return api.makeRequest('/instruments', {
       method: 'POST',
       body: JSON.stringify(filters)
     })
-    return data?.instruments ?? data
   }, [api])
 
   const getQuotes = useCallback(async (symbols) => {
-    const data = await api.makeRequest('/quotes', {
+    return api.makeRequest('/quotes', {
       method: 'POST',
       body: JSON.stringify({ symbols })
     })
-    return data?.quotes ?? data
   }, [api])
 
   const getFundamentals = useCallback(async (symbol) => {
-    const data = await api.makeRequest(`/fundamentals/${symbol}`)
-    return data?.fundamentals ?? data
+    return api.makeRequest(`/fundamentals/${symbol}`)
   }, [api])
 
   const getOptions = useCallback(async (symbol, filters = {}) => {
@@ -398,7 +395,7 @@ export function useInstruments(filters = {}) {
         method: 'POST',
         body: JSON.stringify(filters)
       })
-      setInstruments(data?.instruments ?? data)
+      setInstruments(data)
     } catch (err) {
       setError(err.message)
       setInstruments([])
@@ -447,7 +444,7 @@ export function useQuotes(symbols = []) {
         method: 'POST',
         body: JSON.stringify({ symbols })
       })
-      setQuotes(data?.quotes ?? data)
+      setQuotes(data)
     } catch (err) {
       setError(err.message)
       setQuotes([])
@@ -493,7 +490,7 @@ export function useFundamentals(symbol) {
 
     try {
       const data = await api.makeRequest(`/fundamentals/${symbol}`)
-      setFundamentals(data?.fundamentals ?? data)
+      setFundamentals(data)
     } catch (err) {
       setError(err.message)
       setFundamentals(null)
