@@ -230,21 +230,24 @@ export class OpLabAPIService {
 
   // API Methods
   async getInstruments(filters = {}) {
-    return this.makeRequest(API_ENDPOINTS.instruments, {
+    const data = await this.makeRequest(API_ENDPOINTS.instruments, {
       method: 'POST',
       body: JSON.stringify(filters)
     })
+    return data?.instruments ?? data
   }
 
   async getQuotes(symbols) {
-    return this.makeRequest(API_ENDPOINTS.quotes, {
+    const data = await this.makeRequest(API_ENDPOINTS.quotes, {
       method: 'POST',
       body: JSON.stringify({ symbols })
     })
+    return data?.quotes ?? data
   }
 
   async getFundamentals(symbol) {
-    return this.makeRequest(`${API_ENDPOINTS.fundamentals}/${symbol}`)
+    const data = await this.makeRequest(`${API_ENDPOINTS.fundamentals}/${symbol}`)
+    return data?.fundamentals ?? data
   }
 
   async getOptions(symbol, filters = {}) {
