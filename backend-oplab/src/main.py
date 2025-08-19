@@ -5,9 +5,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from flask import Flask, send_from_directory
 from flask_cors import CORS
-from src.models.user import db
+from apscheduler.schedulers.background import BackgroundScheduler
+from src.models import db
+from src.models.user import User
+from src.models.instrument import Instrument
+from src.models.quote import Quote
+from src.models.fundamental import Fundamental
 from src.routes.user import user_bp
-from src.routes.oplab import oplab_bp
+from src.routes.oplab import oplab_bp, sync_market_data
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
@@ -18,12 +23,23 @@ CORS(app, origins="*")
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(oplab_bp)
 
-# uncomment if you need to use database
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    DATABASE_URL = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 with app.app_context():
     db.create_all()
+    sync_market_data()
+
+def scheduled_sync():
+    with app.app_context():
+        sync_market_data()
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(scheduled_sync, 'interval', hours=24)
+scheduler.start()
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
