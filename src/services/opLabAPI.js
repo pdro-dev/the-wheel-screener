@@ -18,7 +18,7 @@ export const API_CONFIG = {
   }
 }
 
-export function setRefreshInterval(endpoint, ms) {
+export function updateRefreshInterval(endpoint, ms) {
   if (typeof ms === 'number' && ms >= 0) {
     API_CONFIG.refreshIntervals[endpoint] = ms
   }
