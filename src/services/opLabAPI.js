@@ -13,16 +13,22 @@ export const API_CONFIG = {
     fundamentals: 15 * 60 * 1000,
     options: 15 * 60 * 1000,
     screening: 15 * 60 * 1000,
-    user: 15 * 60 * 1000,
-    health: 15 * 60 * 1000
+    user: 15 * 60 * 1000,         // 15 minutes
+    health: 15 * 60 * 1000        // 15 minutes
+  }
+}
+
+export function setRefreshInterval(endpoint, ms) {
+  if (typeof ms === 'number' && ms >= 0) {
+    API_CONFIG.refreshIntervals[endpoint] = ms
   }
 }
 
 export const API_ENDPOINTS = {
-  instruments: '/instruments',
-  quotes: '/quotes',
-  fundamentals: '/fundamentals',
-  options: '/options',
+  instruments: '/market/instruments',
+  quotes: '/market/quote',
+  fundamentals: '/market/fundamentals',
+  options: '/market/options',
   screening: '/screening',
   user: '/user',
   health: '/health'

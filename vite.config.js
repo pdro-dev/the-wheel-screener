@@ -20,7 +20,7 @@ export default defineConfig({
     allowedHosts: ['all'],
     proxy: {
       '/api': {
-        target: 'https://5000-idjrr0ntzomjfm3x9dxgr-4f9c3993.manusvm.computer',
+        target: process.env.BACKEND_URL || 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, '/api')

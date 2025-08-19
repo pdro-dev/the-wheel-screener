@@ -26,7 +26,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 // Import custom hooks
 import { useOptimizedFilters, useDebounce, useResultCache } from '@/hooks/usePerformance'
 import { useIsMobile, useOrientation } from '@/hooks/useMobile'
-import { useWheelScreening, useOpLabState } from '@/hooks/useOpLabAPI'
+import { useWheelScreening } from '@/hooks/useWheelScreening'
+import { useOpLabState } from '@/hooks/useOpLabAPI'
+import { useAsyncState, useRetry } from '@/hooks/useAsyncState'
 
 // Import components
 import { OptimizedTable, FilterableTable } from '@/components/OptimizedTable'
@@ -42,9 +44,7 @@ import {
   LoadingSpinner, 
   ErrorBoundary, 
   ConnectionStatus,
-  ProgressIndicator,
-  useAsyncState,
-  useRetry
+  ProgressIndicator
 } from '@/components/LoadingStates'
 import {
   TokenConfiguration,
@@ -109,9 +109,9 @@ function App() {
   const {
     isAuthenticated,
     isOnline,
-    setToken,
+    user,
     logout,
-    user
+    setToken
   } = useOpLabState()
 
   // Filter state with optimization
