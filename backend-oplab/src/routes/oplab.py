@@ -7,8 +7,19 @@ from datetime import datetime, timedelta
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import logging
 
 oplab_bp = Blueprint('oplab', __name__, url_prefix='/api')
+
+logger = logging.getLogger("oplab")
+
+metrics = {
+    'requests': 0,
+    'cache_hits': 0,
+    'cache_misses': 0,
+    'yfinance_failures': 0,
+    'total_response_time': 0.0
+}
 
 # Mock data generators for realistic financial data
 class MockDataGenerator:
@@ -100,32 +111,45 @@ class MockDataGenerator:
 
     def get_real_stock_data(self, symbol):
         """Try to get real data from Yahoo Finance, fallback to mock"""
+        now = datetime.utcnow()
+        cached = self.cache.get(symbol)
+        if cached and now - cached['timestamp'] < self.cache_ttl:
+            metrics['cache_hits'] += 1
+            logger.info(json.dumps({'event': 'cache_hit', 'symbol': symbol}))
+            return cached['data']
+
+        metrics['cache_misses'] += 1
         try:
             ticker = yf.Ticker(symbol)
             hist = ticker.history(period="1y")
-            
+
             if len(hist) > 0:
                 current_price = float(hist['Close'].iloc[-1])
                 volume = int(hist['Volume'].iloc[-1])
                 prices = hist['Close'].tolist()
-                
-                return {
+
+                data = {
                     'price': current_price,
                     'volume': volume,
                     'historicalPrices': prices[-252:],  # Last year
                     'dataSource': 'real'
                 }
+                self.cache[symbol] = {'data': data, 'timestamp': now}
+                return data
         except Exception as e:
-            print(f"Failed to get real data for {symbol}: {e}")
-        
+            metrics['yfinance_failures'] += 1
+            logger.error(json.dumps({'event': 'yfinance_failure', 'symbol': symbol, 'error': str(e)}))
+
         # Fallback to mock data
         prices = self.generate_realistic_price_data(symbol)
-        return {
+        data = {
             'price': prices[-1],
             'volume': random.randint(50000, 5000000),
             'historicalPrices': prices,
             'dataSource': 'mock'
         }
+        self.cache[symbol] = {'data': data, 'timestamp': now}
+        return data
 
     def generate_fundamentals(self, symbol, sector):
         """Generate realistic fundamental data"""
@@ -163,6 +187,20 @@ class MockDataGenerator:
 
 # Initialize mock data generator
 mock_generator = MockDataGenerator()
+
+
+@oplab_bp.route('/metrics', methods=['GET'])
+def get_metrics():
+    avg_response = metrics['total_response_time'] / metrics['requests'] if metrics['requests'] else 0
+    return jsonify({
+        'requests': metrics['requests'],
+        'cache_hits': metrics['cache_hits'],
+        'cache_misses': metrics['cache_misses'],
+        'yfinance_failures': metrics['yfinance_failures'],
+        'avg_response_time': avg_response,
+        'cache_size': len(mock_generator.cache),
+        'cached_symbols': list(mock_generator.cache.keys())
+    })
 
 @oplab_bp.route('/health', methods=['GET'])
 def health_check():
