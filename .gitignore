@@ -153,8 +153,7 @@ build/
 
 # Python cache files
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 
 # Database files
 backend-oplab/src/database/app.db
