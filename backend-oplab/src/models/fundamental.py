@@ -15,6 +15,7 @@ class Fundamental(db.Model):
 
     def to_dict(self):
         return {
+            'symbol': self.instrument.symbol if getattr(self, 'instrument', None) else None,
             'roic': self.roic,
             'roe': self.roe,
             'debtToEquity': self.debt_to_equity,

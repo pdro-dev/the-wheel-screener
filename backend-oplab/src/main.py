@@ -25,7 +25,10 @@ app.register_blueprint(oplab_bp)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    DATABASE_URL = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
+    # Ensure the SQLite directory exists before constructing the database URL
+    db_dir = os.path.join(os.path.dirname(__file__), 'database')
+    os.makedirs(db_dir, exist_ok=True)
+    DATABASE_URL = f"sqlite:///{os.path.join(db_dir, 'app.db')}"
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
