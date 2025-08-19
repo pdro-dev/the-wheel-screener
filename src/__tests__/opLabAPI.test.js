@@ -141,7 +141,7 @@ describe('OpLabAPIService', () => {
           method: 'GET',
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
-            'Access-Token': 'test-token'
+            'x-oplab-token': 'test-token'
           })
         })
       )

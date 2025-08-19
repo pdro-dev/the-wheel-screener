@@ -10,6 +10,14 @@ import numpy as np
 
 oplab_bp = Blueprint('oplab', __name__, url_prefix='/api')
 
+
+def get_token():
+    token = request.headers.get('x-oplab-token') or request.headers.get('Access-Token')
+    if not token:
+        print('Missing OpLab token in request headers')
+    return token
+
+
 # Mock data generators for realistic financial data
 class MockDataGenerator:
     def __init__(self):
@@ -185,8 +193,8 @@ def health_check():
 @oplab_bp.route('/user', methods=['GET'])
 def get_user_info():
     """Get user information"""
-    token = request.headers.get('x-oplab-token')
-    
+    token = get_token()
+
     if not token:
         return jsonify({'error': 'Token required'}), 401
     

@@ -193,7 +193,7 @@ export function useOpLabAPI() {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers: {
-          'Access-Token': opLabState.token,
+          'x-oplab-token': opLabState.token,
           'Content-Type': 'application/json',
           ...options.headers
         },

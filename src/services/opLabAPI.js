@@ -143,7 +143,7 @@ export class OpLabAPIService {
           ...options,
           headers: {
             'Content-Type': 'application/json',
-            ...(this.token && { 'Access-Token': this.token }),
+            ...(this.token && { 'x-oplab-token': this.token }),
             ...options.headers
           },
           signal: controller.signal
