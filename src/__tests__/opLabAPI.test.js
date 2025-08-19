@@ -141,7 +141,7 @@ describe('OpLabAPIService', () => {
           method: 'GET',
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
-            'Access-Token': 'test-token'
+            'x-oplab-token': 'test-token'
           })
         })
       )
@@ -218,7 +218,7 @@ describe('OpLabAPIService', () => {
       const mockData = [{ symbol: 'PETR4', name: 'Petrobras' }]
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ instruments: mockData })
+        json: () => Promise.resolve(mockData)
       })
 
       const result = await service.getInstruments({ sector: 'Oil' })
@@ -237,7 +237,7 @@ describe('OpLabAPIService', () => {
       const mockData = [{ symbol: 'PETR4', price: 32.45 }]
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ quotes: mockData })
+        json: () => Promise.resolve(mockData)
       })
 
       const result = await service.getQuotes(['PETR4', 'VALE3'])
@@ -256,7 +256,7 @@ describe('OpLabAPIService', () => {
       const mockData = { symbol: 'PETR4', roic: 8.2 }
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ fundamentals: mockData })
+        json: () => Promise.resolve(mockData)
       })
 
       const result = await service.getFundamentals('PETR4')
@@ -301,25 +301,22 @@ describe('OpLabAPIService', () => {
       const mockQuotes = [
         { symbol: 'PETR4', price: 32.45, volume: 1000000 }
       ]
-      const mockFundamental = {
-        symbol: 'PETR4',
-        roic: 8.2,
-        roe: 12,
-        debtToEquity: 0.4
-      }
+      const mockFundamentals = [
+        { symbol: 'PETR4', roic: 8.2, roe: 12, debtToEquity: 0.4 }
+      ]
 
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ instruments: mockInstruments })
+          json: () => Promise.resolve(mockInstruments)
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ quotes: mockQuotes })
+          json: () => Promise.resolve(mockQuotes)
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ fundamentals: mockFundamental })
+          json: () => Promise.resolve(mockFundamentals)
         })
 
       const filters = {
@@ -342,7 +339,7 @@ describe('OpLabAPIService', () => {
       vi.useRealTimers()
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ instruments: [] })
+        json: () => Promise.resolve([])
       })
 
       const result = await service.performWheelScreening({})
@@ -372,10 +369,7 @@ describe('OpLabAPIService', () => {
         fundamental: { roic: 15, roe: 18, debtToEquity: 0.3, revenueGrowth: 0.15 }
       }
 
-      const score = service.calculateWheelScore({
-        ...stock,
-        filters: { minVolume: 100000 }
-      })
+      const score = service.calculateWheelScore(stock, { minVolume: 100000 })
 
       expect(score).toBeGreaterThan(50)
       expect(score).toBeLessThanOrEqual(100)
@@ -388,10 +382,7 @@ describe('OpLabAPIService', () => {
         fundamental: {}
       }
 
-      const score = service.calculateWheelScore({
-        ...stock,
-        filters: { minVolume: 100000 }
-      })
+      const score = service.calculateWheelScore(stock, { minVolume: 100000 })
 
       expect(score).toBeGreaterThan(0)
       expect(score).toBeLessThanOrEqual(100)

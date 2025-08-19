@@ -7,19 +7,21 @@ from datetime import datetime, timedelta
 import yfinance as yf
 import pandas as pd
 import numpy as np
-import logging
+
+from src.models import db
+from src.models.instrument import Instrument
+from src.models.quote import Quote
+from src.models.fundamental import Fundamental
 
 oplab_bp = Blueprint('oplab', __name__, url_prefix='/api')
 
-logger = logging.getLogger("oplab")
 
-metrics = {
-    'requests': 0,
-    'cache_hits': 0,
-    'cache_misses': 0,
-    'yfinance_failures': 0,
-    'total_response_time': 0.0
-}
+def get_token():
+    token = request.headers.get('x-oplab-token') or request.headers.get('Access-Token')
+    if not token:
+        print('Missing OpLab token in request headers')
+    return token
+
 
 # Mock data generators for realistic financial data
 class MockDataGenerator:
@@ -111,45 +113,32 @@ class MockDataGenerator:
 
     def get_real_stock_data(self, symbol):
         """Try to get real data from Yahoo Finance, fallback to mock"""
-        now = datetime.utcnow()
-        cached = self.cache.get(symbol)
-        if cached and now - cached['timestamp'] < self.cache_ttl:
-            metrics['cache_hits'] += 1
-            logger.info(json.dumps({'event': 'cache_hit', 'symbol': symbol}))
-            return cached['data']
-
-        metrics['cache_misses'] += 1
         try:
             ticker = yf.Ticker(symbol)
             hist = ticker.history(period="1y")
-
+            
             if len(hist) > 0:
                 current_price = float(hist['Close'].iloc[-1])
                 volume = int(hist['Volume'].iloc[-1])
                 prices = hist['Close'].tolist()
-
-                data = {
+                
+                return {
                     'price': current_price,
                     'volume': volume,
                     'historicalPrices': prices[-252:],  # Last year
                     'dataSource': 'real'
                 }
-                self.cache[symbol] = {'data': data, 'timestamp': now}
-                return data
         except Exception as e:
-            metrics['yfinance_failures'] += 1
-            logger.error(json.dumps({'event': 'yfinance_failure', 'symbol': symbol, 'error': str(e)}))
-
+            print(f"Failed to get real data for {symbol}: {e}")
+        
         # Fallback to mock data
         prices = self.generate_realistic_price_data(symbol)
-        data = {
+        return {
             'price': prices[-1],
             'volume': random.randint(50000, 5000000),
             'historicalPrices': prices,
             'dataSource': 'mock'
         }
-        self.cache[symbol] = {'data': data, 'timestamp': now}
-        return data
 
     def generate_fundamentals(self, symbol, sector):
         """Generate realistic fundamental data"""
@@ -189,18 +178,64 @@ class MockDataGenerator:
 mock_generator = MockDataGenerator()
 
 
-@oplab_bp.route('/metrics', methods=['GET'])
-def get_metrics():
-    avg_response = metrics['total_response_time'] / metrics['requests'] if metrics['requests'] else 0
-    return jsonify({
-        'requests': metrics['requests'],
-        'cache_hits': metrics['cache_hits'],
-        'cache_misses': metrics['cache_misses'],
-        'yfinance_failures': metrics['yfinance_failures'],
-        'avg_response_time': avg_response,
-        'cache_size': len(mock_generator.cache),
-        'cached_symbols': list(mock_generator.cache.keys())
-    })
+def sync_market_data():
+    """Synchronize database with latest market data."""
+    for stock in mock_generator.brazilian_stocks:
+        symbol = stock['symbol']
+
+        instrument = Instrument.query.filter_by(symbol=symbol).first()
+        if not instrument:
+            instrument = Instrument(
+                symbol=symbol,
+                name=stock['name'],
+                sector=stock['sector'],
+                currency='BRL',
+                exchange='B3',
+                last_updated=datetime.now(),
+            )
+            db.session.add(instrument)
+            db.session.flush()
+
+        price_data = mock_generator.get_real_stock_data(symbol)
+
+        quote = Quote(
+            instrument_id=instrument.id,
+            price=price_data['price'],
+            volume=price_data['volume'],
+            change=0.0,
+            change_percent=0.0,
+            bid=price_data['price'] * 0.999,
+            ask=price_data['price'] * 1.001,
+            high_52w=max(price_data['historicalPrices']),
+            low_52w=min(price_data['historicalPrices']),
+            historical_prices=price_data['historicalPrices'],
+            data_source=price_data['dataSource'],
+            timestamp=datetime.now(),
+        )
+        db.session.add(quote)
+
+        fundamentals_data = mock_generator.generate_fundamentals(symbol, stock['sector'])
+        fundamental = Fundamental.query.filter_by(instrument_id=instrument.id).first()
+        if fundamental:
+            fundamental.roic = fundamentals_data['roic']
+            fundamental.roe = fundamentals_data['roe']
+            fundamental.debt_to_equity = fundamentals_data['debtToEquity']
+            fundamental.revenue = fundamentals_data['revenue']
+            fundamental.dividend_yield = fundamentals_data['dividendYield']
+            fundamental.last_updated = datetime.now()
+        else:
+            fundamental = Fundamental(
+                instrument_id=instrument.id,
+                roic=fundamentals_data['roic'],
+                roe=fundamentals_data['roe'],
+                debt_to_equity=fundamentals_data['debtToEquity'],
+                revenue=fundamentals_data['revenue'],
+                dividend_yield=fundamentals_data['dividendYield'],
+                last_updated=datetime.now(),
+            )
+            db.session.add(fundamental)
+
+    db.session.commit()
 
 @oplab_bp.route('/health', methods=['GET'])
 def health_check():
@@ -223,8 +258,8 @@ def health_check():
 @oplab_bp.route('/user', methods=['GET'])
 def get_user_info():
     """Get user information"""
-    token = request.headers.get('x-oplab-token')
-    
+    token = get_token()
+
     if not token:
         return jsonify({'error': 'Token required'}), 401
     
@@ -245,95 +280,114 @@ def get_user_info():
     })
 
 @oplab_bp.route('/instruments', methods=['POST'])
-def get_instruments():
-    """Get instruments with filtering"""
+def get_instruments(filters=None):
+    """Get instruments with filtering, preferring cached database data."""
     try:
-        filters = request.get_json() or {}
-        
-        # Start with all Brazilian stocks
+        if filters is None:
+            filters = request.get_json() or {}
+
+        if Instrument.query.count() == 0:
+            sync_market_data()
+
+        query = db.session.query(Instrument, Quote).join(Quote)
+
+        if 'minPrice' in filters:
+            query = query.filter(Quote.price >= filters['minPrice'])
+        if 'maxPrice' in filters:
+            query = query.filter(Quote.price <= filters['maxPrice'])
+        if 'minVolume' in filters:
+            query = query.filter(Quote.volume >= filters['minVolume'])
+        if filters.get('sectors'):
+            query = query.filter(Instrument.sector.in_(filters['sectors']))
+
         instruments = []
-        
-        for stock in mock_generator.brazilian_stocks:
-            # Get realistic price data
-            price_data = mock_generator.get_real_stock_data(stock['symbol'])
-            
-            instrument = {
-                'symbol': stock['symbol'],
-                'name': stock['name'],
-                'sector': stock['sector'],
-                'price': price_data['price'],
-                'volume': price_data['volume'],
-                'currency': 'BRL',
-                'exchange': 'B3',
-                'dataSource': price_data['dataSource']
-            }
-            
-            # Apply filters
-            if 'minPrice' in filters and instrument['price'] < filters['minPrice']:
-                continue
-            if 'maxPrice' in filters and instrument['price'] > filters['maxPrice']:
-                continue
-            if 'minVolume' in filters and instrument['volume'] < filters['minVolume']:
-                continue
-            if 'sectors' in filters and filters['sectors'] and instrument['sector'] not in filters['sectors']:
-                continue
-                
-            instruments.append(instrument)
-        
+        for instrument, quote in query.all():
+            data = instrument.to_dict()
+            data.update({
+                'price': quote.price,
+                'volume': quote.volume,
+                'dataSource': quote.data_source,
+            })
+            instruments.append(data)
+
         return jsonify({
             'instruments': instruments,
             'total': len(instruments),
             'filters_applied': filters,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @oplab_bp.route('/quotes', methods=['POST'])
-def get_quotes():
-    """Get current quotes for symbols"""
+def get_quotes(symbols=None):
+    """Get current quotes for symbols, checking the database before external APIs."""
     try:
-        data = request.get_json()
-        symbols = data.get('symbols', [])
-        
+        if symbols is None:
+            data = request.get_json() or {}
+            symbols = data.get('symbols', [])
+
         if not symbols:
             return jsonify({'error': 'Symbols required'}), 400
-        
+
         quotes = []
         for symbol in symbols:
-            # Find stock info
+            instrument = Instrument.query.filter_by(symbol=symbol).first()
+            quote = None
+            if instrument:
+                quote = (
+                    Quote.query.filter_by(instrument_id=instrument.id)
+                    .order_by(Quote.timestamp.desc())
+                    .first()
+                )
+
+            if quote:
+                quotes.append(quote.to_dict())
+                continue
+
             stock_info = next((s for s in mock_generator.brazilian_stocks if s['symbol'] == symbol), None)
             if not stock_info:
                 continue
-                
-            # Get realistic price data
+
             price_data = mock_generator.get_real_stock_data(symbol)
-            
-            quote = {
-                'symbol': symbol,
-                'price': price_data['price'],
-                'volume': price_data['volume'],
-                'change': round(random.uniform(-5, 5), 2),
-                'changePercent': round(random.uniform(-0.08, 0.08), 4),
-                'bid': price_data['price'] * 0.999,
-                'ask': price_data['price'] * 1.001,
-                'high52w': max(price_data['historicalPrices']),
-                'low52w': min(price_data['historicalPrices']),
-                'historicalPrices': price_data['historicalPrices'],
-                'timestamp': datetime.now().isoformat(),
-                'dataSource': price_data['dataSource']
-            }
-            
-            quotes.append(quote)
-        
+            if not instrument:
+                instrument = Instrument(
+                    symbol=symbol,
+                    name=stock_info['name'],
+                    sector=stock_info['sector'],
+                    currency='BRL',
+                    exchange='B3',
+                    last_updated=datetime.now(),
+                )
+                db.session.add(instrument)
+                db.session.flush()
+
+            quote = Quote(
+                instrument_id=instrument.id,
+                price=price_data['price'],
+                volume=price_data['volume'],
+                change=round(random.uniform(-5, 5), 2),
+                change_percent=round(random.uniform(-0.08, 0.08), 4),
+                bid=price_data['price'] * 0.999,
+                ask=price_data['price'] * 1.001,
+                high_52w=max(price_data['historicalPrices']),
+                low_52w=min(price_data['historicalPrices']),
+                historical_prices=price_data['historicalPrices'],
+                data_source=price_data['dataSource'],
+                timestamp=datetime.now(),
+            )
+            db.session.add(quote)
+            db.session.commit()
+            quotes.append(quote.to_dict())
+
         return jsonify({
             'quotes': quotes,
             'requested': len(symbols),
             'returned': len(quotes),
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -341,18 +395,50 @@ def get_quotes():
 def get_fundamentals(symbol):
     """Get fundamental data for a symbol"""
     try:
-        # Find stock info
+        instrument = Instrument.query.filter_by(symbol=symbol).first()
+        if instrument:
+            fundamental = Fundamental.query.filter_by(instrument_id=instrument.id).first()
+            if fundamental:
+                return jsonify({
+                    'fundamentals': fundamental.to_dict(),
+                    'timestamp': datetime.now().isoformat(),
+                })
+
         stock_info = next((s for s in mock_generator.brazilian_stocks if s['symbol'] == symbol), None)
         if not stock_info:
             return jsonify({'error': 'Symbol not found'}), 404
-        
-        fundamentals = mock_generator.generate_fundamentals(symbol, stock_info['sector'])
-        
+
+        data = mock_generator.generate_fundamentals(symbol, stock_info['sector'])
+
+        if not instrument:
+            instrument = Instrument(
+                symbol=symbol,
+                name=stock_info['name'],
+                sector=stock_info['sector'],
+                currency='BRL',
+                exchange='B3',
+                last_updated=datetime.now(),
+            )
+            db.session.add(instrument)
+            db.session.flush()
+
+        fundamental = Fundamental(
+            instrument_id=instrument.id,
+            roic=data['roic'],
+            roe=data['roe'],
+            debt_to_equity=data['debtToEquity'],
+            revenue=data['revenue'],
+            dividend_yield=data['dividendYield'],
+            last_updated=datetime.now(),
+        )
+        db.session.add(fundamental)
+        db.session.commit()
+
         return jsonify({
-            'fundamentals': fundamentals,
-            'timestamp': datetime.now().isoformat()
+            'fundamentals': fundamental.to_dict(),
+            'timestamp': datetime.now().isoformat(),
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -376,13 +462,13 @@ def perform_screening():
         screening_filters = {**default_filters, **filters}
         
         # Get instruments
-        instruments_response = get_instruments()
+        instruments_response = get_instruments(screening_filters)
         instruments_data = instruments_response.get_json()
         instruments = instruments_data['instruments']
         
         # Get quotes for all instruments
         symbols = [i['symbol'] for i in instruments]
-        quotes_response = get_quotes()
+        quotes_response = get_quotes(symbols)
         quotes_data = quotes_response.get_json()
         quotes = quotes_data['quotes']
         
