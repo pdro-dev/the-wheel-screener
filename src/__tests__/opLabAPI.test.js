@@ -4,7 +4,7 @@ import {
   OpLabAPIError,
   API_CONFIG,
   API_ENDPOINTS,
-  setRefreshInterval,
+  updateRefreshInterval,
   getOpLabService,
   ScreeningUtils
 } from '../opLabAPI'
@@ -107,7 +107,7 @@ describe('OpLabAPIService', () => {
 
     it('should update refresh interval at runtime', () => {
       const original = API_CONFIG.refreshIntervals.instruments
-      setRefreshInterval('instruments', 1000)
+      updateRefreshInterval('instruments', 1000)
 
       const key = 'dynamic-key'
       const data = { result: 'dynamic' }
@@ -117,7 +117,7 @@ describe('OpLabAPIService', () => {
 
       expect(service.getFromCache(key)).toBeNull()
 
-      setRefreshInterval('instruments', original)
+      updateRefreshInterval('instruments', original)
     })
   })
 

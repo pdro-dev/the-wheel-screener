@@ -6,7 +6,7 @@ import { AlertCircle, RefreshCw } from 'lucide-react'
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
-    this.state = { hasError: false, error: null, errorInfo: null }
+    this.state = { hasError: false, error: null }
   }
 
   static getDerivedStateFromError(error) {
@@ -25,7 +25,7 @@ class ErrorBoundary extends React.Component {
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null })
+    this.setState({ hasError: false, error: null })
   }
 
   render() {
