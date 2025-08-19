@@ -1,9 +1,9 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useOpLabState } from './useOpLabAPI'
 
 // Hook for OpLab service operations
 export function useOpLabService() {
-  const { isAuthenticated, token, isOnline } = useOpLabState()
+  const { token, isOnline } = useOpLabState()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -16,13 +16,15 @@ export function useOpLabService() {
     setError(null)
 
     try {
+      const { headers: extraHeaders, ...rest } = options
+
       const response = await fetch(`/api${endpoint}`, {
-        ...options,
+        ...rest, // pode incluir signal, method, body
         headers: {
           'Content-Type': 'application/json',
           ...(token && { 'Access-Token': token }),
-          ...options.headers
-        }
+          ...extraHeaders,
+        },
       })
 
       if (!response.ok) {
@@ -40,41 +42,44 @@ export function useOpLabService() {
     }
   }, [token, isOnline])
 
-  const getInstruments = useCallback(async (filters = {}) => {
+  const getInstruments = useCallback(async (filters = {}, opts = {}) => {
     return makeRequest('/market/instruments', {
       method: 'POST',
-      body: JSON.stringify(filters)
+      body: JSON.stringify(filters),
+      ...opts,
     })
   }, [makeRequest])
 
-  const getQuotes = useCallback(async (symbols) => {
+  const getQuotes = useCallback(async (symbols, opts = {}) => {
     return makeRequest('/market/quote', {
       method: 'POST',
-      body: JSON.stringify({ symbols })
+      body: JSON.stringify({ symbols }),
+      ...opts,
     })
   }, [makeRequest])
 
-  const getFundamentals = useCallback(async (symbol) => {
-    return makeRequest(`/market/fundamentals/${symbol}`)
+  const getFundamentals = useCallback(async (symbol, opts = {}) => {
+    return makeRequest(`/market/fundamentals/${symbol}`, { ...opts })
   }, [makeRequest])
 
-  const getOptions = useCallback(async (symbol) => {
-    return makeRequest(`/market/options/${symbol}`)
+  const getOptions = useCallback(async (symbol, opts = {}) => {
+    return makeRequest(`/market/options/${symbol}`, { ...opts })
   }, [makeRequest])
 
-  const performScreening = useCallback(async (filters) => {
+  const performScreening = useCallback(async (filters, opts = {}) => {
     return makeRequest('/screening', {
       method: 'POST',
-      body: JSON.stringify(filters)
+      body: JSON.stringify(filters),
+      ...opts,
     })
   }, [makeRequest])
 
-  const checkHealth = useCallback(async () => {
-    return makeRequest('/health')
+  const checkHealth = useCallback(async (opts = {}) => {
+    return makeRequest('/health', { ...opts })
   }, [makeRequest])
 
-  const getUserInfo = useCallback(async () => {
-    return makeRequest('/user')
+  const getUserInfo = useCallback(async (opts = {}) => {
+    return makeRequest('/user', { ...opts })
   }, [makeRequest])
 
   return {
@@ -87,7 +92,7 @@ export function useOpLabService() {
     performScreening,
     checkHealth,
     getUserInfo,
-    makeRequest
+    makeRequest,
   }
 }
 

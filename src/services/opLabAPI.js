@@ -34,12 +34,6 @@ export const API_ENDPOINTS = {
   health: '/health'
 }
 
-export function setRefreshInterval(endpoint, ms) {
-  if (typeof ms === 'number' && ms >= 0) {
-    API_CONFIG.refreshIntervals[endpoint] = ms
-  }
-}
-
 // Custom error class for OpLab API
 export class OpLabAPIError extends Error {
   constructor(message, status, code, details = {}) {

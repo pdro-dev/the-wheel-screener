@@ -150,3 +150,10 @@ build/
 *.tmp
 *.temp
 
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyc
+
