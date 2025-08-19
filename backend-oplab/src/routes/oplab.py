@@ -17,11 +17,10 @@ oplab_bp = Blueprint('oplab', __name__, url_prefix='/api')
 
 
 def get_token():
-    """Retrieve authentication token from request headers."""
+
     token = (
-        request.headers.get('Access-Token')
-        or request.headers.get('x-oplab-token')
-        or None
+        request.headers.get('Access-Token') or
+        request.headers.get('x-oplab-token')
     )
 
     if not token:
@@ -31,6 +30,14 @@ def get_token():
             token = parts[1] if len(parts) == 2 and parts[0].lower() == 'bearer' else auth
 
     return token
+
+metrics = {
+    'requests': 0,
+    'cache_hits': 0,
+    'cache_misses': 0,
+    'yfinance_failures': 0,
+    'total_response_time': 0.0
+}
 
 
 # Mock data generators for realistic financial data
@@ -60,7 +67,7 @@ class MockDataGenerator:
             {'symbol': 'AMER3.SA', 'name': 'Americanas', 'sector': 'Consumer Cyclical'},
             
             # Healthcare
-            {'symbol': 'RDOR3.SA', 'name': 'Rede D\'Or', 'sector': 'Healthcare'},
+            {'symbol': "RDOR3.SA", 'name': "Rede D'Or", 'sector': 'Healthcare'},
             {'symbol': 'HAPV3.SA', 'name': 'Hapvida', 'sector': 'Healthcare'},
             {'symbol': 'QUAL3.SA', 'name': 'Qualicorp', 'sector': 'Healthcare'},
             
@@ -269,7 +276,7 @@ def health_check():
 def get_user_info():
     """Get user information"""
     token = get_token()
-
+    
     if not token:
         return jsonify({'error': 'Token required'}), 401
     
@@ -288,6 +295,72 @@ def get_user_info():
         'lastLogin': datetime.now().isoformat(),
         'accountCreated': '2024-01-15T10:00:00Z'
     })
+
+# New /market endpoints (PR #38 compliance)
+@oplab_bp.route('/market/instruments', methods=['POST'])
+def get_market_instruments():
+    """Get instruments with filtering - New /market endpoint"""
+    return get_instruments()
+
+@oplab_bp.route('/market/quote', methods=['POST'])  
+def get_market_quotes():
+    """Get current quotes for symbols - New /market endpoint"""
+    return get_quotes()
+
+@oplab_bp.route('/market/fundamentals/<symbol>', methods=['GET'])
+def get_market_fundamentals(symbol):
+    """Get fundamental data for a symbol - New /market endpoint"""
+    return get_fundamentals(symbol)
+
+@oplab_bp.route('/market/options/<symbol>', methods=['GET'])
+def get_market_options(symbol):
+    """Get options data for a symbol - New /market endpoint"""
+    try:
+        # Mock options data
+        options_data = {
+            'symbol': symbol,
+            'chains': generate_options_chain(symbol),
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        return jsonify(options_data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+def generate_options_chain(symbol):
+    """Generate realistic options chain data"""
+    base_price = random.uniform(20, 100)
+    chains = []
+    
+    # Generate options for next 3 months
+    for months in [1, 2, 3]:
+        expiry_date = (datetime.now() + timedelta(days=30*months)).strftime('%Y-%m-%d')
+        
+        for strike_offset in [-20, -10, -5, 0, 5, 10, 20]:
+            strike = base_price + strike_offset
+            
+            chains.append({
+                'strike': round(strike, 2),
+                'expiry': expiry_date,
+                'call': {
+                    'bid': round(max(0.1, base_price - strike + random.uniform(-2, 2)), 2),
+                    'bid': round(max(0.1, max(0, base_price - strike) + random.uniform(-2, 2)), 2),
+                    'ask': round(max(0.2, max(0, base_price - strike) + random.uniform(-1, 3)), 2),
+                    'volume': random.randint(0, 1000),
+                    'openInterest': random.randint(0, 5000),
+                    'impliedVolatility': round(random.uniform(0.15, 0.45), 3)
+                },
+                'put': {
+                    'bid': round(max(0.1, strike - base_price + random.uniform(-2, 2)), 2),
+                    'bid': round(max(0.1, max(0, strike - base_price) + random.uniform(-2, 2)), 2),
+                    'ask': round(max(0.2, max(0, strike - base_price) + random.uniform(-1, 3)), 2),
+                    'volume': random.randint(0, 1000),
+                    'openInterest': random.randint(0, 5000),
+                    'impliedVolatility': round(random.uniform(0.15, 0.45), 3)
+                }
+            })
+    
+    return chains
 
 @oplab_bp.route('/instruments', methods=['POST'])
 def get_instruments(filters=None):
@@ -745,4 +818,3 @@ def calculate_wheel_suitability(instrument, quote, fundamental):
         score += 10
     
     return min(100, score)
-
