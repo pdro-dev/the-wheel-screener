@@ -151,6 +151,11 @@ export class OpLabAPIService {
 
         clearTimeout(timeoutId)
 
+        const newToken = response.headers.get('x-oplab-token')
+        if (newToken) {
+          this.setToken(newToken)
+        }
+
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}))
           throw OpLabAPIError.fromResponse(response, errorData)
