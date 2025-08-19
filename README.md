@@ -69,6 +69,18 @@ pnpm dev
 http://localhost:5173
 ```
 
+### 🗄️ Configuração do Banco de Dados
+
+O backend em Flask utiliza SQLAlchemy para persistência. No ambiente de desenvolvimento nenhum ajuste é necessário e os dados são armazenados em um arquivo SQLite localizado em `backend-oplab/src/database/app.db`.
+
+Em produção recomenda-se PostgreSQL. Defina a variável de ambiente `DATABASE_URL` com a string de conexão, por exemplo:
+
+```bash
+export DATABASE_URL=postgresql+psycopg2://usuario:senha@localhost:5432/oplab
+```
+
+O servidor detectará automaticamente a variável e usará o PostgreSQL; caso contrário, o SQLite será utilizado. Uma rotina em background atualiza periodicamente a base com instrumentos, cotações e fundamentos mais recentes.
+
 ## 📦 Scripts Disponíveis
 
 - `npm run dev` - Inicia servidor de desenvolvimento
@@ -353,21 +365,3 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 
 *Desenvolvido com ❤️ e 🔒 segurança para a comunidade de investidores brasileiros*
 
-
-## 🧪 Testes
-
-### Backend
-1. Instale as dependências mínimas:
-   ```bash
-   pip install -r backend-oplab/requirements.txt
-   ```
-2. Execute os testes com `pytest` (configurado via `pytest.ini`):
-   ```bash
-   pytest
-   ```
-
-### Frontend
-Execute os testes do frontend usando Vitest:
-```bash
-pnpm test
-```
