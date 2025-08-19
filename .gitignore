@@ -157,3 +157,6 @@ __pycache__/
 *.pyo
 *.pyc
 
+# Database files
+backend-oplab/src/database/app.db
+*.db
