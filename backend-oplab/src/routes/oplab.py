@@ -284,8 +284,7 @@ def get_market_options(symbol):
         }
         
         return jsonify(options_data)
-        
-        except Exception as e:
+    except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 def generate_options_chain(symbol):
