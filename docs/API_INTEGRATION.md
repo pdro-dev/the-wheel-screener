@@ -13,13 +13,13 @@ A camada principal que gerencia todas as comunicações com a API OpLab.
 #### Configuração
 ```javascript
 export const API_CONFIG = {
-  baseURL: '/api',
+  baseURL: import.meta?.env?.VITE_OPLAB_API_URL || '/api',
   timeout: 30000,
   retryAttempts: 3,
   retryDelay: 1000,
-  cache: {
+  refreshIntervals: {
     instruments: 5 * 60 * 1000,    // 5 minutos
-    quotes: 30 * 1000,             // 30 segundos  
+    quotes: 30 * 1000,             // 30 segundos
     fundamentals: 10 * 60 * 1000,  // 10 minutos
     screening: 2 * 60 * 1000       // 2 minutos
   }
