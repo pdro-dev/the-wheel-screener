@@ -150,3 +150,12 @@ build/
 *.tmp
 *.temp
 
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Database files
+backend-oplab/src/database/app.db
+*.db
