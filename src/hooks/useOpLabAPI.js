@@ -200,10 +200,15 @@ export function useOpLabAPI() {
         signal: abortControllerRef.current.signal
       })
 
-      // Update rate limit info from headers
+      // Update rate limit info and token from headers
       const remaining = response.headers.get('x-ratelimit-remaining')
       const limit = response.headers.get('x-ratelimit-limit')
       const reset = response.headers.get('x-ratelimit-reset')
+      const newToken = response.headers.get('x-oplab-token')
+
+      if (newToken) {
+        opLabState.setToken(newToken)
+      }
 
       if (remaining && limit) {
         opLabState.updateLimits({

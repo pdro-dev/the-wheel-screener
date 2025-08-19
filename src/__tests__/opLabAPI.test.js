@@ -13,6 +13,13 @@ import {
 const mockFetch = vi.fn()
 global.fetch = mockFetch
 
+const createMockResponse = (data, overrides = {}) => ({
+  ok: true,
+  json: () => Promise.resolve(data),
+  headers: { get: vi.fn().mockReturnValue(null) },
+  ...overrides
+})
+
 describe('OpLabAPIService', () => {
   let service
 
@@ -124,10 +131,7 @@ describe('OpLabAPIService', () => {
   describe('Request Execution', () => {
     it('should make successful API request', async () => {
       const responseData = { data: 'test' }
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(responseData)
-      })
+      mockFetch.mockResolvedValueOnce(createMockResponse(responseData))
 
       const result = await service.executeRequest({
         endpoint: '/test',
@@ -147,13 +151,30 @@ describe('OpLabAPIService', () => {
       )
     })
 
-    it('should handle API errors', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 401,
-        statusText: 'Unauthorized',
-        json: () => Promise.resolve({ message: 'Invalid token' })
+    it('should update token from response header', async () => {
+      const headers = {
+        get: vi.fn().mockImplementation((name) =>
+          name === 'x-oplab-token' ? 'new-token' : null
+        )
+      }
+      mockFetch.mockResolvedValueOnce(createMockResponse({}, { headers }))
+
+      await service.executeRequest({
+        endpoint: '/test',
+        options: { method: 'GET' }
       })
+
+      expect(service.token).toBe('new-token')
+      expect(headers.get).toHaveBeenCalledWith('x-oplab-token')
+    })
+
+    it('should handle API errors', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse(
+          { message: 'Invalid token' },
+          { ok: false, status: 401, statusText: 'Unauthorized' }
+        )
+      )
 
       await expect(service.executeRequest({
         endpoint: '/test',
@@ -164,16 +185,15 @@ describe('OpLabAPIService', () => {
     it('should retry on server errors', async () => {
       vi.useRealTimers()
       mockFetch
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 500,
-          statusText: 'Internal Server Error',
-          json: () => Promise.resolve({ message: 'Server error' })
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ data: 'success' })
-        })
+        .mockResolvedValueOnce(
+          createMockResponse(
+            { message: 'Server error' },
+            { ok: false, status: 500, statusText: 'Internal Server Error' }
+          )
+        )
+        .mockResolvedValueOnce(
+          createMockResponse({ data: 'success' })
+        )
 
       const result = await service.executeRequest({
         endpoint: '/test',
@@ -201,7 +221,8 @@ describe('OpLabAPIService', () => {
         new Promise((resolve) => {
           setTimeout(() => resolve({
             ok: true,
-            json: () => Promise.resolve({ data: 'late' })
+            json: () => Promise.resolve({ data: 'late' }),
+            headers: { get: vi.fn().mockReturnValue(null) }
           }), API_CONFIG.timeout + 1000)
         })
       )
@@ -216,10 +237,7 @@ describe('OpLabAPIService', () => {
   describe('API Methods', () => {
     it('should get instruments', async () => {
       const mockData = [{ symbol: 'PETR4', name: 'Petrobras' }]
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockData)
-      })
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockData))
 
       const result = await service.getInstruments({ sector: 'Oil' })
 
@@ -235,10 +253,7 @@ describe('OpLabAPIService', () => {
 
     it('should get quotes', async () => {
       const mockData = [{ symbol: 'PETR4', price: 32.45 }]
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockData)
-      })
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockData))
 
       const result = await service.getQuotes(['PETR4', 'VALE3'])
 
@@ -254,10 +269,7 @@ describe('OpLabAPIService', () => {
 
     it('should get fundamentals', async () => {
       const mockData = { symbol: 'PETR4', roic: 8.2 }
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockData)
-      })
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockData))
 
       const result = await service.getFundamentals('PETR4')
 
@@ -267,10 +279,7 @@ describe('OpLabAPIService', () => {
 
     it('should check health', async () => {
       const mockData = { status: 'ok' }
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockData)
-      })
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockData))
 
       const result = await service.checkHealth()
 
@@ -280,10 +289,7 @@ describe('OpLabAPIService', () => {
 
     it('should get user info', async () => {
       const mockData = { id: 1, name: 'Test User' }
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockData)
-      })
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockData))
 
       const result = await service.getUserInfo()
 
@@ -306,18 +312,9 @@ describe('OpLabAPIService', () => {
       ]
 
       mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockInstruments)
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockQuotes)
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockFundamentals)
-        })
+        .mockResolvedValueOnce(createMockResponse(mockInstruments))
+        .mockResolvedValueOnce(createMockResponse(mockQuotes))
+        .mockResolvedValueOnce(createMockResponse(mockFundamentals))
 
       const filters = {
         minPrice: 20,
@@ -337,10 +334,7 @@ describe('OpLabAPIService', () => {
 
     it('should return empty array when no instruments found', async () => {
       vi.useRealTimers()
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve([])
-      })
+      mockFetch.mockResolvedValueOnce(createMockResponse([]))
 
       const result = await service.performWheelScreening({})
 
@@ -350,11 +344,12 @@ describe('OpLabAPIService', () => {
 
     it('should handle API errors in screening', async () => {
       vi.useRealTimers()
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: () => Promise.resolve({ message: 'Server error' })
-      })
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse(
+          { message: 'Server error' },
+          { ok: false, status: 500 }
+        )
+      )
 
       await expect(service.performWheelScreening({})).rejects.toThrow()
       vi.useFakeTimers()
