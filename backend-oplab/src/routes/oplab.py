@@ -17,9 +17,19 @@ oplab_bp = Blueprint('oplab', __name__, url_prefix='/api')
 
 
 def get_token():
-    token = request.headers.get('x-oplab-token') or request.headers.get('Access-Token')
+    """Retrieve authentication token from request headers."""
+    token = (
+        request.headers.get('Access-Token')
+        or request.headers.get('x-oplab-token')
+        or None
+    )
+
     if not token:
-        print('Missing OpLab token in request headers')
+        auth = request.headers.get('Authorization')
+        if auth:
+            parts = auth.split()
+            token = parts[1] if len(parts) == 2 and parts[0].lower() == 'bearer' else auth
+
     return token
 
 
