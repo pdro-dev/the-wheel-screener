@@ -260,21 +260,24 @@ export function useOpLabService() {
   const api = useOpLabAPI()
 
   const getInstruments = useCallback(async (filters = {}) => {
-    return api.makeRequest('/instruments', {
+    const data = await api.makeRequest('/instruments', {
       method: 'POST',
       body: JSON.stringify(filters)
     })
+    return data?.instruments ?? data
   }, [api])
 
   const getQuotes = useCallback(async (symbols) => {
-    return api.makeRequest('/quotes', {
+    const data = await api.makeRequest('/quotes', {
       method: 'POST',
       body: JSON.stringify({ symbols })
     })
+    return data?.quotes ?? data
   }, [api])
 
   const getFundamentals = useCallback(async (symbol) => {
-    return api.makeRequest(`/fundamentals/${symbol}`)
+    const data = await api.makeRequest(`/fundamentals/${symbol}`)
+    return data?.fundamentals ?? data
   }, [api])
 
   const getOptions = useCallback(async (symbol, filters = {}) => {
@@ -395,7 +398,7 @@ export function useInstruments(filters = {}) {
         method: 'POST',
         body: JSON.stringify(filters)
       })
-      setInstruments(data)
+      setInstruments(data?.instruments ?? data)
     } catch (err) {
       setError(err.message)
       setInstruments([])
@@ -444,7 +447,7 @@ export function useQuotes(symbols = []) {
         method: 'POST',
         body: JSON.stringify({ symbols })
       })
-      setQuotes(data)
+      setQuotes(data?.quotes ?? data)
     } catch (err) {
       setError(err.message)
       setQuotes([])
@@ -490,7 +493,7 @@ export function useFundamentals(symbol) {
 
     try {
       const data = await api.makeRequest(`/fundamentals/${symbol}`)
-      setFundamentals(data)
+      setFundamentals(data?.fundamentals ?? data)
     } catch (err) {
       setError(err.message)
       setFundamentals(null)
