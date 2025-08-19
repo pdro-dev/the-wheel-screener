@@ -68,7 +68,7 @@ describe('OpLabAPIService', () => {
       const key = 'test-key'
       const data = { result: 'test' }
       
-      service.setCache(key, data, '/market/instruments')
+      service.setCache(key, data, API_ENDPOINTS.instruments)
       const cached = service.getFromCache(key)
       
       expect(cached).toEqual(data)
@@ -78,7 +78,7 @@ describe('OpLabAPIService', () => {
       const key = 'test-key'
       const data = { result: 'test' }
       
-      service.setCache(key, data, '/market/instruments')
+      service.setCache(key, data, API_ENDPOINTS.instruments)
       
       // Fast forward time beyond cache TTL
       vi.advanceTimersByTime(API_CONFIG.refreshIntervals.instruments + 1000)
@@ -112,7 +112,7 @@ describe('OpLabAPIService', () => {
       const key = 'dynamic-key'
       const data = { result: 'dynamic' }
 
-      service.setCache(key, data, '/market/instruments')
+      service.setCache(key, data, API_ENDPOINTS.instruments)
       vi.advanceTimersByTime(1000 + 10)
 
       expect(service.getFromCache(key)).toBeNull()
@@ -225,7 +225,7 @@ describe('OpLabAPIService', () => {
 
       expect(result).toEqual(mockData)
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/market/instruments',
+        '/api/instruments',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ sector: 'Oil' })
@@ -244,7 +244,7 @@ describe('OpLabAPIService', () => {
 
       expect(result).toEqual(mockData)
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/market/quote',
+        '/api/quotes',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ symbols: ['PETR4', 'VALE3'] })
@@ -262,7 +262,7 @@ describe('OpLabAPIService', () => {
       const result = await service.getFundamentals('PETR4')
 
       expect(result).toEqual(mockData)
-      expect(mockFetch).toHaveBeenCalledWith('/api/market/fundamentals/PETR4', expect.any(Object))
+      expect(mockFetch).toHaveBeenCalledWith('/api/fundamentals/PETR4', expect.any(Object))
     })
 
     it('should check health', async () => {

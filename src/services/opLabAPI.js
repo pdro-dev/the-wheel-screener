@@ -2,8 +2,8 @@
 
 // API Configuration
 export const API_CONFIG = {
-  // Base URL now defaults to the official OpLab API but can be overridden
-  baseURL: import.meta?.env?.VITE_OPLAB_API_URL || 'https://api.oplab.com.br/v3',
+  // Base URL now defaults to local proxy but can be overridden for production
+  baseURL: import.meta?.env?.VITE_OPLAB_API_URL || '/api',
   timeout: 30000,
   retryAttempts: 3,
   retryDelay: 1000,
@@ -19,11 +19,11 @@ export const API_CONFIG = {
 }
 
 export const API_ENDPOINTS = {
-  instruments: '/market/instruments',
-  quotes: '/market/quote',
-  fundamentals: '/market/fundamentals',
-  options: '/market/options',
-  screening: '/market/screening',
+  instruments: '/instruments',
+  quotes: '/quotes',
+  fundamentals: '/fundamentals',
+  options: '/options',
+  screening: '/screening',
   user: '/user',
   health: '/health'
 }

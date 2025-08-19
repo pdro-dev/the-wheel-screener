@@ -6,6 +6,14 @@ Uma ferramenta web especializada para screening automatizado da estratégia "The
 
 O **The Wheel Screener** é uma aplicação web desenvolvida como parte de um projeto aplicado de pós-graduação em Ciência de Dados e Mercado Financeiro. A ferramenta automatiza o processo de identificação de oportunidades para a estratégia "The Wheel", reduzindo o tempo de análise de 2 horas para 10 minutos (92% de redução).
 
+## 📌 Objetivos e Requisitos do Sistema
+
+- Integrar-se à API da OpLab para instrumentos, cotações, fundamentos e screening.
+- Utilizar dados do Yahoo Finance como fallback automático para cotações e históricos.
+- Fornecer interface web responsiva com autenticação simples e configuração segura de token.
+- Disponibilizar backend Flask em `/api` para servir e processar dados.
+- Garantir respostas em até 10 minutos com atualização periódica configurável.
+
 ### 🌐 Demo Online
 **URL:** https://pdro-dev.github.io/the-wheel-screener/
 

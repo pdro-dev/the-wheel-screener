@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useRef } from 'react'
 
 // Base URL for OpLab API (can be overridden via environment variable)
-const API_BASE_URL = import.meta.env.VITE_OPLAB_API_URL || 'https://api.oplab.com.br/v3'
+const API_BASE_URL = import.meta.env.VITE_OPLAB_API_URL || '/api'
 
 // Basic in-memory users for simple authentication
 const VALID_USERS = {
@@ -316,43 +316,13 @@ export function useWheelScreening() {
     setResults([])
 
     try {
-      // Step 1: Get instruments (25% progress)
-      setProgress(25)
-      const instruments = await api.makeRequest('/screening/instruments', {
+      setProgress(50)
+      const { results: screeningResults } = await api.makeRequest('/screening', {
         method: 'POST',
         body: JSON.stringify(filters)
       })
 
-      // Step 2: Get quotes for filtered instruments (50% progress)
-      setProgress(50)
-      const quotes = await api.makeRequest('/screening/quotes', {
-        method: 'POST',
-        body: JSON.stringify({ 
-          symbols: instruments.map(i => i.symbol)
-        })
-      })
-
-      // Step 3: Get fundamentals for candidates (75% progress)
-      setProgress(75)
-      const fundamentals = await api.makeRequest('/screening/fundamentals', {
-        method: 'POST',
-        body: JSON.stringify({ 
-          symbols: quotes.filter(q => q.volume >= filters.minVolume).map(q => q.symbol)
-        })
-      })
-
-      // Step 4: Calculate wheel scores (100% progress)
       setProgress(100)
-      const screeningResults = await api.makeRequest('/screening/wheel', {
-        method: 'POST',
-        body: JSON.stringify({
-          instruments,
-          quotes,
-          fundamentals,
-          filters
-        })
-      })
-
       setResults(screeningResults)
       return screeningResults
 
