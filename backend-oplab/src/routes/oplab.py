@@ -13,6 +13,18 @@ oplab_bp = Blueprint('oplab', __name__, url_prefix='/api')
 
 logger = logging.getLogger("oplab")
 
+def get_token():
+    token = (
+        request.headers.get('Access-Token') or
+        request.headers.get('x-oplab-token')
+    )
+    if not token:
+        auth = request.headers.get('Authorization')
+        if auth:
+            parts = auth.split()
+            token = parts[1] if len(parts) == 2 and parts[0].lower() == 'bearer' else auth
+    return token
+
 metrics = {
     'requests': 0,
     'cache_hits': 0,
@@ -48,7 +60,7 @@ class MockDataGenerator:
             {'symbol': 'AMER3.SA', 'name': 'Americanas', 'sector': 'Consumer Cyclical'},
             
             # Healthcare
-            {'symbol': 'RDOR3.SA', 'name': 'Rede D\'Or', 'sector': 'Healthcare'},
+            {'symbol': "RDOR3.SA", 'name': "Rede D'Or", 'sector': 'Healthcare'},
             {'symbol': 'HAPV3.SA', 'name': 'Hapvida', 'sector': 'Healthcare'},
             {'symbol': 'QUAL3.SA', 'name': 'Qualicorp', 'sector': 'Healthcare'},
             
@@ -223,7 +235,7 @@ def health_check():
 @oplab_bp.route('/user', methods=['GET'])
 def get_user_info():
     """Get user information"""
-    token = request.headers.get('Access-Token') or request.headers.get('x-oplab-token')
+    token = get_token()
     
     if not token:
         return jsonify({'error': 'Token required'}), 401
@@ -273,7 +285,7 @@ def get_market_options(symbol):
         
         return jsonify(options_data)
         
-    except Exception as e:
+        except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 def generate_options_chain(symbol):
@@ -714,4 +726,3 @@ def calculate_wheel_suitability(instrument, quote, fundamental):
         score += 10
     
     return min(100, score)
-
