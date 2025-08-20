@@ -1,28 +1,29 @@
-name: Test OPLab Integration
+name: Test OpLab Integration
 
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'backend-oplab/**'
   pull_request:
-    branches: [ main ]
+    paths:
+      - 'backend-oplab/**'
 
 jobs:
   test:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.0
-
+      - uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-
       - name: Install dependencies
         run: |
+          cd backend-oplab
           python -m pip install --upgrade pip
-          pip install -r backend-oplab/requirements.txt pytest
-
+          pip install -r requirements.txt
       - name: Run tests
-        run: pytest
+        run: |
+          cd backend-oplab
+          pytest
