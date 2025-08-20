@@ -23,7 +23,7 @@ def test_oplab_integration():
     # Test 1: Check token availability
     token = os.getenv('OPLAB_API_TOKEN')
     if token:
-        print(f"✅ OPLAB_API_TOKEN found: {token[:10]}...")
+        print("✅ OPLAB_API_TOKEN found and configured.")
     else:
         print("⚠️  OPLAB_API_TOKEN not found - will test fallback system")
     
