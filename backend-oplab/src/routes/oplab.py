@@ -413,7 +413,7 @@ def get_metrics():
 
 
 @oplab_bp.route('/health', methods=['GET'])
-def health_check():
+def get_health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
@@ -549,6 +549,8 @@ def generate_options_chain(symbol):
 
 def get_instruments():
     """Get instruments with filtering - Enhanced with OpLab API integration"""
+    start = time.time()
+    metrics['requests'] += 1
     try:
         filters = request.get_json() or {}
         
@@ -602,7 +604,7 @@ def get_instruments():
         }
 
         return jsonify(resp)
-        
+
 
     except Exception as e:
         metrics['total_response_time'] += (time.time() - start)
@@ -611,10 +613,11 @@ def get_instruments():
 
 @oplab_bp.route('/quotes', methods=['POST'])
 
-def get_quotes():
+def get_quotes(symbols=None):
     """Get current quotes for symbols - Enhanced with OpLab API integration"""
 
     start = time.time()
+
     try:
         data = request.get_json() or {}
         symbols = data.get('symbols', [])
@@ -648,6 +651,7 @@ def get_quotes():
             # Get realistic price data (tries Yahoo Finance first, then mock)
             price_data = mock_generator.get_real_stock_data(symbol)
 
+
             quote = {
                 'symbol': symbol,
                 'price': price_data['price'],
@@ -673,8 +677,10 @@ def get_quotes():
             'dataSource': 'yahoo_finance_mock'
         }
 
+
         metrics['total_response_time'] += (time.time() - start)
         return jsonify(resp)
+
 
 
     except Exception as e:
@@ -686,6 +692,7 @@ def get_quotes():
 def get_fundamentals(symbol):
     """Get fundamental data for a symbol - Enhanced with OpLab API integration"""
     start = time.time()
+
     try:
         # Try OpLab API first
         if oplab_client.is_available():
@@ -708,12 +715,13 @@ def get_fundamentals(symbol):
         fundamentals = mock_generator.generate_fundamentals(symbol, stock_info['sector'])
         fundamentals['dataSource'] = 'mock'
 
+
         resp = {
+
             'fundamentals': fundamentals,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'dataSource': 'mock'
         }
-        metrics['total_response_time'] += (time.time() - start)
-        return jsonify(resp)
 
     except Exception as e:
         metrics['total_response_time'] += (time.time() - start)
