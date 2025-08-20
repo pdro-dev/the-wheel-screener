@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState, useRef } from 'react'
 
 // Base URL for OpLab API (can be overridden via environment variable)
-const API_BASE_URL = import.meta.env.VITE_OPLAB_API_URL || '/api'
+const API_BASE_URL =
+  import.meta.env.VITE_OPLAB_API_URL || 'https://api.oplab.com.br/v3'
 
 // Basic in-memory users for simple authentication
 const VALID_USERS = {
