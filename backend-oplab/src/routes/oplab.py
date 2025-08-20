@@ -413,7 +413,7 @@ def get_metrics():
 
 
 @oplab_bp.route('/health', methods=['GET'])
-def health_check():
+def get_health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
@@ -549,6 +549,8 @@ def generate_options_chain(symbol):
 
 def get_instruments():
     """Get instruments with filtering - Enhanced with OpLab API integration"""
+    start = time.time()
+    metrics['requests'] += 1
     try:
         filters = request.get_json() or {}
         
@@ -599,9 +601,9 @@ def get_instruments():
             'filters_applied': filters,
             'timestamp': datetime.now().isoformat(),
             'dataSource': 'yahoo_finance_mock'
+        }
 
-        })
-        
+        return jsonify(resp)
 
     except Exception as e:
         metrics['total_response_time'] += (time.time() - start)
@@ -610,8 +612,11 @@ def get_instruments():
 
 @oplab_bp.route('/quotes', methods=['POST'])
 
-def get_quotes():
+def get_quotes(symbols=None):
     """Get current quotes for symbols - Enhanced with OpLab API integration"""
+
+    start = time.time()
+    metrics['requests'] += 1
 
     try:
         if symbols is None:
@@ -646,8 +651,7 @@ def get_quotes():
             # Get realistic price data (tries Yahoo Finance first, then mock)
             price_data = mock_generator.get_real_stock_data(symbol)
 
-
-
+            instrument = Instrument.query.filter_by(symbol=symbol).first()
             if not instrument:
                 instrument = Instrument(
                     symbol=symbol,
@@ -667,7 +671,7 @@ def get_quotes():
             else:
                 high_52w = low_52w = price_data['price']
 
-            quote = Quote(
+            quote_model = Quote(
                 instrument_id=instrument.id,
                 price=price_data['price'],
                 volume=price_data['volume'],
@@ -681,11 +685,8 @@ def get_quotes():
                 data_source=price_data['dataSource'],
                 timestamp=datetime.now(),
             )
-            db.session.add(quote)
+            db.session.add(quote_model)
             db.session.commit()
-            quotes.append(quote.to_dict())
-
-
 
             quote = {
                 'symbol': symbol,
@@ -710,9 +711,9 @@ def get_quotes():
             'found': len(quotes),
             'timestamp': datetime.now().isoformat(),
             'dataSource': 'yahoo_finance_mock'
+        }
 
-        })
-        
+        return jsonify(resp)
 
     except Exception as e:
         metrics['total_response_time'] += (time.time() - start)
@@ -722,6 +723,8 @@ def get_quotes():
 @oplab_bp.route('/fundamentals/<symbol>', methods=['GET'])
 def get_fundamentals(symbol):
     """Get fundamental data for a symbol - Enhanced with OpLab API integration"""
+    start = time.time()
+    metrics['requests'] += 1
 
     try:
         # Try OpLab API first
@@ -744,12 +747,10 @@ def get_fundamentals(symbol):
         fundamentals['dataSource'] = 'mock'
      
         return jsonify({
-
             'fundamentals': fundamentals,
-            'timestamp': datetime.now().isoformat()
-        }
-        metrics['total_response_time'] += (time.time() - start)
-        return jsonify(resp)
+            'timestamp': datetime.now().isoformat(),
+            'dataSource': 'mock'
+        })
 
     except Exception as e:
         metrics['total_response_time'] += (time.time() - start)
