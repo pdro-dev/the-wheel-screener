@@ -331,14 +331,14 @@ def generate_options_chain(symbol):
     """Generate realistic options chain data"""
     base_price = random.uniform(20, 100)
     chains = []
-    
+
     # Generate options for next 3 months
     for months in [1, 2, 3]:
-        expiry_date = (datetime.now() + timedelta(days=30*months)).strftime('%Y-%m-%d')
-        
+        expiry_date = (datetime.now() + timedelta(days=30 * months)).strftime('%Y-%m-%d')
+
         for strike_offset in [-20, -10, -5, 0, 5, 10, 20]:
             strike = base_price + strike_offset
-            
+
             chains.append({
                 'strike': round(strike, 2),
                 'expiry': expiry_date,
@@ -357,7 +357,7 @@ def generate_options_chain(symbol):
                     'impliedVolatility': round(random.uniform(0.15, 0.45), 3)
                 }
             })
-    
+
     return chains
 
 @oplab_bp.route('/instruments', methods=['POST'])
@@ -730,18 +730,20 @@ def calculate_volatility(prices):
     """Calculate annualized volatility"""
     if len(prices) < 2:
         return 0.5
-    
+
+    epsilon = 1e-8
     returns = []
     for i in range(1, len(prices)):
-        returns.append((prices[i] - prices[i-1]) / prices[i-1])
-    
+        denom = max(abs(prices[i - 1]), epsilon)
+        returns.append((prices[i] - prices[i - 1]) / denom)
+
     if not returns:
         return 0.5
-    
+
     mean_return = sum(returns) / len(returns)
     variance = sum((r - mean_return) ** 2 for r in returns) / len(returns)
-    
-    return (variance ** 0.5) * (252 ** 0.5)  # Annualized
+
+    return (variance ** 0.5) * (252 ** 0.5)
 
 def calculate_trend(prices):
     """Calculate price trend"""
