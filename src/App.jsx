@@ -12,7 +12,8 @@ import {
   Filter,
   Activity,
   PieChart,
-  BookOpen
+  BookOpen,
+  Home
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -47,6 +48,7 @@ import {
   ConnectionStatus,
   ProgressIndicator
 } from '@/components/LoadingStates'
+import Dashboard from '@/components/Dashboard'
 import TutorialPage from '@/components/tutorial/TutorialPage'
 import {
   TokenConfiguration,
@@ -139,7 +141,7 @@ function App() {
   const [showMobileFilters, setShowMobileFilters] = useState(false)
   const [selectedStocks, setSelectedStocks] = useState([])
   const [viewMode, setViewMode] = useState(isMobile ? 'mobile' : 'desktop')
-  const [activeTab, setActiveTab] = useState('screening')
+  const [activeTab, setActiveTab] = useState('dashboard')
 
   // Wheel screening hook
   const {
@@ -455,7 +457,11 @@ function App() {
 
           {/* Navigation Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className={`grid w-full ${user?.name === 'admin' ? 'grid-cols-9' : 'grid-cols-5'}`}>
+            <TabsList className={`grid w-full ${user?.name === 'admin' ? 'grid-cols-10' : 'grid-cols-6'}`}>
+              <TabsTrigger value="dashboard" className="flex items-center gap-2">
+                <Home className="h-4 w-4" />
+                Dashboard
+              </TabsTrigger>
               <TabsTrigger value="screening" className="flex items-center gap-2">
                 <Search className="h-4 w-4" />
                 Screening
@@ -488,7 +494,7 @@ function App() {
                     Performance
                   </TabsTrigger>
                   <TabsTrigger value="rate-limiting" className="flex items-center gap-2">
-                    <Settings className="h-4 w-4" />
+                    <AlertCircle className="h-4 w-4" />
                     Rate Limiting
                   </TabsTrigger>
                   <TabsTrigger value="user-activity" className="flex items-center gap-2">
@@ -498,6 +504,11 @@ function App() {
                 </>
               )}
             </TabsList>
+
+            {/* Dashboard Tab */}
+            <TabsContent value="dashboard" className="space-y-6">
+              <Dashboard />
+            </TabsContent>
 
             {/* Screening Tab */}
             <TabsContent value="screening" className="space-y-6">
