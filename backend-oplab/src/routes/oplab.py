@@ -251,7 +251,9 @@ class MockDataGenerator:
 
     def get_real_stock_data(self, symbol):
         """Try to get real data from Yahoo Finance, fallback to mock"""
+
         now = datetime.utcnow()
+
         cached = self.cache.get(symbol)
         if cached and now - cached['timestamp'] < self.cache_ttl:
             metrics['cache_hits'] += 1
@@ -348,18 +350,27 @@ def sync_market_data():
 
         price_data = mock_generator.get_real_stock_data(symbol)
 
+        historical_prices = price_data['historicalPrices']
+        if historical_prices:
+            high_52w = max(historical_prices)
+            low_52w = min(historical_prices)
+        else:
+            high_52w = low_52w = price_data['price']
+
         quote = Quote(
             instrument_id=instrument.id,
             price=price_data["price"],
             volume=price_data["volume"],
             change=0.0,
             change_percent=0.0,
+
             bid=price_data["price"] * 0.999,
             ask=price_data["price"] * 1.001,
             high_52w=max(price_data["historicalPrices"]) if price_data["historicalPrices"] else price_data["price"],
             low_52w=min(price_data["historicalPrices"]) if price_data["historicalPrices"] else price_data["price"],
             historical_prices=price_data["historicalPrices"],
             data_source=price_data["dataSource"],
+
             timestamp=datetime.now(),
         )
         db.session.add(quote)
@@ -515,7 +526,9 @@ def generate_options_chain(symbol):
 
     # Generate options for next 3 months
     for months in [1, 2, 3]:
+
         expiry_date = (datetime.now() + timedelta(days=30*months)).strftime('%Y-%m-%d')
+
 
         for strike_offset in [-20, -10, -5, 0, 5, 10, 20]:
             strike = base_price + strike_offset
@@ -651,6 +664,47 @@ def get_quotes(symbols=None):
             # Get realistic price data (tries Yahoo Finance first, then mock)
             price_data = mock_generator.get_real_stock_data(symbol)
 
+
+
+            if not instrument:
+                instrument = Instrument(
+                    symbol=symbol,
+                    name=stock_info['name'],
+                    sector=stock_info['sector'],
+                    currency='BRL',
+                    exchange='B3',
+                    last_updated=datetime.now(),
+                )
+                db.session.add(instrument)
+                db.session.flush()
+
+            historical_prices = price_data['historicalPrices']
+            if historical_prices:
+                high_52w = max(historical_prices)
+                low_52w = min(historical_prices)
+            else:
+                high_52w = low_52w = price_data['price']
+
+            quote = Quote(
+                instrument_id=instrument.id,
+                price=price_data['price'],
+                volume=price_data['volume'],
+                change=round(random.uniform(-5, 5), 2),
+                change_percent=round(random.uniform(-0.08, 0.08), 4),
+                bid=price_data['price'] * 0.999,
+                ask=price_data['price'] * 1.001,
+                high_52w=high_52w,
+                low_52w=low_52w,
+                historical_prices=historical_prices,
+                data_source=price_data['dataSource'],
+                timestamp=datetime.now(),
+            )
+            db.session.add(quote)
+            db.session.commit()
+            quotes.append(quote.to_dict())
+
+
+
             quote = {
                 'symbol': symbol,
                 'price': price_data['price'],
@@ -692,6 +746,7 @@ def get_fundamentals(symbol):
     try:
         client = get_oplab_client()
 
+
         # Try OpLab API first
         if client.is_available():
             try:
@@ -702,6 +757,7 @@ def get_fundamentals(symbol):
                 return jsonify(oplab_data)
             except Exception as e:
                 logger.warning(f"OpLab API fundamentals failed for {symbol}, falling back to mock: {str(e)}")
+
 
         # Fallback to mock data
         stock_info = next((s for s in mock_generator.brazilian_stocks if s['symbol'] == symbol), None)
@@ -919,7 +975,9 @@ def calculate_wheel_score(instrument, quote, fundamental, filters):
             technical_score += 1
 
     # Support level analysis
+
     support_level = min(prices[-20:]) if len(prices) >= 20 else (min(prices) if prices else quote['price'])
+
     current_price = quote['price']
     base = support_level if support_level > 0 else current_price
     distance_from_support = (current_price - base) / base if base else 0
@@ -941,6 +999,7 @@ def calculate_volatility(prices):
     if len(prices) < 2:
         return 0.5
 
+
     returns = []
     for i in range(1, len(prices)):
         if prices[i-1] == 0:
@@ -951,13 +1010,16 @@ def calculate_volatility(prices):
         denom = max(abs(prices[i-1]), epsilon)
         returns.append((prices[i] - prices[i-1]) / denom)
 
+
     if not returns:
         return 0.5
 
     mean_return = sum(returns) / len(returns)
     variance = sum((r - mean_return) ** 2 for r in returns) / len(returns)
 
+
     return (variance ** 0.5) * (252 ** 0.5)  # Annualized
+
 
 
 def calculate_trend(prices):
@@ -976,6 +1038,7 @@ def calculate_trend(prices):
 
     denom = n * sum_xx - sum_x * sum_x
     if denom == 0:
+
         return 0
 
     slope = (n * sum_xy - sum_x * sum_y) / denom
@@ -983,6 +1046,7 @@ def calculate_trend(prices):
     avg_y = (sum_y / n) if n else 1
     if avg_y == 0:
         return 0
+
 
     return slope / avg_y  # Normalized slope
 
