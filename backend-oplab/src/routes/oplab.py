@@ -215,6 +215,13 @@ def sync_market_data():
 
         price_data = mock_generator.get_real_stock_data(symbol)
 
+        historical_prices = price_data['historicalPrices']
+        if historical_prices:
+            high_52w = max(historical_prices)
+            low_52w = min(historical_prices)
+        else:
+            high_52w = low_52w = price_data['price']
+
         quote = Quote(
             instrument_id=instrument.id,
             price=price_data['price'],
@@ -223,9 +230,9 @@ def sync_market_data():
             change_percent=0.0,
             bid=price_data['price'] * 0.999,
             ask=price_data['price'] * 1.001,
-            high_52w=max(price_data['historicalPrices']),
-            low_52w=min(price_data['historicalPrices']),
-            historical_prices=price_data['historicalPrices'],
+            high_52w=high_52w,
+            low_52w=low_52w,
+            historical_prices=historical_prices,
             data_source=price_data['dataSource'],
             timestamp=datetime.now(),
         )
@@ -444,6 +451,13 @@ def get_quotes(symbols=None):
                 db.session.add(instrument)
                 db.session.flush()
 
+            historical_prices = price_data['historicalPrices']
+            if historical_prices:
+                high_52w = max(historical_prices)
+                low_52w = min(historical_prices)
+            else:
+                high_52w = low_52w = price_data['price']
+
             quote = Quote(
                 instrument_id=instrument.id,
                 price=price_data['price'],
@@ -452,9 +466,9 @@ def get_quotes(symbols=None):
                 change_percent=round(random.uniform(-0.08, 0.08), 4),
                 bid=price_data['price'] * 0.999,
                 ask=price_data['price'] * 1.001,
-                high_52w=max(price_data['historicalPrices']),
-                low_52w=min(price_data['historicalPrices']),
-                historical_prices=price_data['historicalPrices'],
+                high_52w=high_52w,
+                low_52w=low_52w,
+                historical_prices=historical_prices,
                 data_source=price_data['dataSource'],
                 timestamp=datetime.now(),
             )
@@ -711,7 +725,10 @@ def calculate_wheel_score(instrument, quote, fundamental, filters):
             technical_score += 1
     
     # Support level analysis
-    support_level = min(prices[-20:]) if len(prices) >= 20 else min(prices)
+    if prices:
+        support_level = min(prices[-20:]) if len(prices) >= 20 else min(prices)
+    else:
+        support_level = quote['price'] * 0.95
     current_price = quote['price']
     distance_from_support = (current_price - support_level) / support_level
     
@@ -730,18 +747,19 @@ def calculate_volatility(prices):
     """Calculate annualized volatility"""
     if len(prices) < 2:
         return 0.5
-    
+    epsilon = 1e-8
     returns = []
     for i in range(1, len(prices)):
-        returns.append((prices[i] - prices[i-1]) / prices[i-1])
-    
+        denom = max(abs(prices[i-1]), epsilon)
+        returns.append((prices[i] - prices[i-1]) / denom)
+
     if not returns:
         return 0.5
-    
+
     mean_return = sum(returns) / len(returns)
     variance = sum((r - mean_return) ** 2 for r in returns) / len(returns)
-    
-    return (variance ** 0.5) * (252 ** 0.5)  # Annualized
+
+    return (variance ** 0.5) * (252 ** 0.5)
 
 def calculate_trend(prices):
     """Calculate price trend"""
