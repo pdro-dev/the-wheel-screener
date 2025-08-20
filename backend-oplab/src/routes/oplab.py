@@ -524,7 +524,8 @@ def generate_options_chain(symbol):
 
     # Generate options for next 3 months
     for months in [1, 2, 3]:
-        expiry_date = (datetime.now() + timedelta(days=30*months)).strftime('%Y-%m-%d')
+        expiry_date = (datetime.now() + timedelta(days=30 * months)).strftime('%Y-%m-%d')
+
 
         for strike_offset in [-20, -10, -5, 0, 5, 10, 20]:
             strike = base_price + strike_offset
@@ -989,17 +990,12 @@ def calculate_volatility(prices):
     if len(prices) < 2:
         return 0.5
 
-
-    returns = []
-    for i in range(1, len(prices)):
-        if prices[i-1] == 0:
-            continue
     epsilon = 1e-8
     returns = []
     for i in range(1, len(prices)):
+        denom = max(abs(prices[i - 1]), epsilon)
+        returns.append((prices[i] - prices[i - 1]) / denom)
 
-        denom = max(abs(prices[i-1]), epsilon)
-        returns.append((prices[i] - prices[i-1]) / denom)
 
     if not returns:
         return 0.5
@@ -1007,8 +1003,8 @@ def calculate_volatility(prices):
     mean_return = sum(returns) / len(returns)
     variance = sum((r - mean_return) ** 2 for r in returns) / len(returns)
 
+    return (variance ** 0.5) * (252 ** 0.5)
 
-    return (variance ** 0.5) * (252 ** 0.5)  # Annualized
 
 
 
