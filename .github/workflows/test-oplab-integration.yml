@@ -16,6 +16,8 @@ jobs:
   test-backend:
     runs-on: ubuntu-latest
     environment: desenvolvimento  # Environment name configured in GitHub
+    env:
+      OPLAB_API_TOKEN: ${{ secrets.OPLAB_API_TOKEN }}
 
     steps:
       - name: Checkout code
@@ -34,8 +36,6 @@ jobs:
           pip install -r requirements.txt
 
       - name: Test OpLab API Integration
-        env:
-          OPLAB_API_TOKEN: ${{ secrets.OPLAB_API_TOKEN }}
         run: |
           cd backend-oplab
           echo "Testing OpLab API integration with token..."
@@ -72,8 +72,6 @@ jobs:
           "
 
       - name: Run Backend Server Test
-        env:
-          OPLAB_API_TOKEN: ${{ secrets.OPLAB_API_TOKEN }}
         run: |
           cd backend-oplab
           timeout 30s python src/main.py &
@@ -116,7 +114,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: desenvolvimento
     needs: [test-backend, test-frontend]
-    
+    env:
+      OPLAB_API_TOKEN: ${{ secrets.OPLAB_API_TOKEN }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -137,8 +137,6 @@ jobs:
           npm ci
 
       - name: Run integration tests
-        env:
-          OPLAB_API_TOKEN: ${{ secrets.OPLAB_API_TOKEN }}
         run: |
           echo "🚀 Starting integration tests..."
           
