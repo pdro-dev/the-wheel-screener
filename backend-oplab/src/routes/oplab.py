@@ -605,6 +605,7 @@ def get_instruments():
 
         return jsonify(resp)
 
+
     except Exception as e:
         metrics['total_response_time'] += (time.time() - start)
         return jsonify({'error': str(e)}), 500
@@ -616,14 +617,13 @@ def get_quotes(symbols=None):
     """Get current quotes for symbols - Enhanced with OpLab API integration"""
 
     start = time.time()
-    metrics['requests'] += 1
 
     try:
-        if symbols is None:
-            data = request.get_json() or {}
-            symbols = data.get('symbols', [])
+        data = request.get_json() or {}
+        symbols = data.get('symbols', [])
 
         if not symbols:
+            metrics['total_response_time'] += (time.time() - start)
             return jsonify({'error': 'Symbols required'}), 400
 
         
@@ -646,47 +646,11 @@ def get_quotes(symbols=None):
             if not stock_info:
 
                 continue
-                
+
 
             # Get realistic price data (tries Yahoo Finance first, then mock)
             price_data = mock_generator.get_real_stock_data(symbol)
 
-            instrument = Instrument.query.filter_by(symbol=symbol).first()
-            if not instrument:
-                instrument = Instrument(
-                    symbol=symbol,
-                    name=stock_info['name'],
-                    sector=stock_info['sector'],
-                    currency='BRL',
-                    exchange='B3',
-                    last_updated=datetime.now(),
-                )
-                db.session.add(instrument)
-                db.session.flush()
-
-            historical_prices = price_data['historicalPrices']
-            if historical_prices:
-                high_52w = max(historical_prices)
-                low_52w = min(historical_prices)
-            else:
-                high_52w = low_52w = price_data['price']
-
-            quote_model = Quote(
-                instrument_id=instrument.id,
-                price=price_data['price'],
-                volume=price_data['volume'],
-                change=round(random.uniform(-5, 5), 2),
-                change_percent=round(random.uniform(-0.08, 0.08), 4),
-                bid=price_data['price'] * 0.999,
-                ask=price_data['price'] * 1.001,
-                high_52w=high_52w,
-                low_52w=low_52w,
-                historical_prices=historical_prices,
-                data_source=price_data['dataSource'],
-                timestamp=datetime.now(),
-            )
-            db.session.add(quote_model)
-            db.session.commit()
 
             quote = {
                 'symbol': symbol,
@@ -713,7 +677,11 @@ def get_quotes(symbols=None):
             'dataSource': 'yahoo_finance_mock'
         }
 
+
+        metrics['total_response_time'] += (time.time() - start)
         return jsonify(resp)
+
+
 
     except Exception as e:
         metrics['total_response_time'] += (time.time() - start)
@@ -724,7 +692,6 @@ def get_quotes(symbols=None):
 def get_fundamentals(symbol):
     """Get fundamental data for a symbol - Enhanced with OpLab API integration"""
     start = time.time()
-    metrics['requests'] += 1
 
     try:
         # Try OpLab API first
@@ -733,24 +700,28 @@ def get_fundamentals(symbol):
                 oplab_data = oplab_client.get_fundamentals(symbol)
                 oplab_data['dataSource'] = 'oplab'
                 logger.info(f"Successfully retrieved fundamentals for {symbol} from OpLab API")
+                metrics['total_response_time'] += (time.time() - start)
                 return jsonify(oplab_data)
             except Exception as e:
                 logger.warning(f"OpLab API fundamentals failed for {symbol}, falling back to mock: {str(e)}")
-        
+
 
         # Fallback to mock data
         stock_info = next((s for s in mock_generator.brazilian_stocks if s['symbol'] == symbol), None)
         if not stock_info:
+            metrics['total_response_time'] += (time.time() - start)
             return jsonify({'error': 'Symbol not found'}), 404
 
         fundamentals = mock_generator.generate_fundamentals(symbol, stock_info['sector'])
         fundamentals['dataSource'] = 'mock'
-     
-        return jsonify({
+
+
+        resp = {
+
             'fundamentals': fundamentals,
             'timestamp': datetime.now().isoformat(),
             'dataSource': 'mock'
-        })
+        }
 
     except Exception as e:
         metrics['total_response_time'] += (time.time() - start)
