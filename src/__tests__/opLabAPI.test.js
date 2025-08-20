@@ -319,7 +319,9 @@ describe('OpLabAPIService', () => {
       ]
       const mockFundamentals = {
         symbol: 'PETR4', roic: 8.2, roe: 12, debtToEquity: 0.4
-      }
+      const mockFundamentals = [
+        { symbol: 'PETR4', roic: 8.2, roe: 12, debtToEquity: 0.4 }
+      ]
 
       mockFetch
         .mockResolvedValueOnce(createMockResponse(mockInstruments))
