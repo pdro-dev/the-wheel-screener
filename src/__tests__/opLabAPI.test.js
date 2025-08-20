@@ -35,7 +35,6 @@ describe('OpLabAPIService', () => {
   })
 
   afterEach(() => {
-    vi.useFakeTimers()
     vi.runOnlyPendingTimers()
     vi.useRealTimers()
   })
