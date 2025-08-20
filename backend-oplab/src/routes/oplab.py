@@ -3,6 +3,7 @@ import requests
 import json
 import time
 import random
+import os
 from datetime import datetime, timedelta
 import yfinance as yf
 import pandas as pd
@@ -18,12 +19,119 @@ metrics = {
     'cache_hits': 0,
     'cache_misses': 0,
     'yfinance_failures': 0,
+    'oplab_failures': 0,
     'total_response_time': 0.0
 }
+
+# OpLab API Client for real integration
+class OpLabAPIClient:
+    def __init__(self):
+        self.base_url = "https://api.oplab.com.br/v1"
+        self.token = os.getenv('OPLAB_API_TOKEN')
+        self.session = requests.Session()
+        
+        if self.token:
+            self.session.headers.update({
+                'Authorization': f'Bearer {self.token}',
+                'Content-Type': 'application/json',
+                'User-Agent': 'TheWheelScreener/1.0'
+            })
+            logger.info("OpLab API client initialized with token")
+        else:
+            logger.warning("OPLAB_API_TOKEN not found in environment variables")
+    
+    def is_available(self):
+        """Check if OpLab API is available and token is configured"""
+        return self.token is not None
+    
+    def get_instruments(self, filters=None):
+        """Get instruments from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+        
+        try:
+            endpoint = f"{self.base_url}/market/instruments"
+            payload = filters or {}
+            
+            response = self.session.post(endpoint, json=payload, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved {len(data.get('instruments', []))} instruments")
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API request failed: {str(e)}")
+            raise Exception(f"OpLab API request failed: {str(e)}")
+    
+    def get_quotes(self, symbols):
+        """Get quotes from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+        
+        try:
+            endpoint = f"{self.base_url}/market/quotes"
+            payload = {"symbols": symbols}
+            
+            response = self.session.post(endpoint, json=payload, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved quotes for {len(data.get('quotes', []))} symbols")
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API quotes request failed: {str(e)}")
+            raise Exception(f"OpLab API quotes request failed: {str(e)}")
+    
+    def get_fundamentals(self, symbol):
+        """Get fundamental data from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+        
+        try:
+            endpoint = f"{self.base_url}/market/fundamentals/{symbol}"
+            
+            response = self.session.get(endpoint, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved fundamentals for {symbol}")
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API fundamentals request failed for {symbol}: {str(e)}")
+            raise Exception(f"OpLab API fundamentals request failed: {str(e)}")
+    
+    def get_user_info(self):
+        """Get user information from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+        
+        try:
+            endpoint = f"{self.base_url}/user"
+            
+            response = self.session.get(endpoint, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info("OpLab API: Retrieved user information")
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API user info request failed: {str(e)}")
+            raise Exception(f"OpLab API user info request failed: {str(e)}")
 
 # Mock data generators for realistic financial data
 class MockDataGenerator:
     def __init__(self):
+        self.cache = {}
+        self.cache_ttl = timedelta(minutes=5)  # 5 minutes cache
+        
         self.sectors = [
             'Technology', 'Healthcare', 'Financial Services', 'Consumer Cyclical',
             'Communication Services', 'Industrials', 'Consumer Defensive',
@@ -185,7 +293,8 @@ class MockDataGenerator:
             'lastUpdated': datetime.now().isoformat()
         }
 
-# Initialize mock data generator
+# Initialize clients
+oplab_client = OpLabAPIClient()
 mock_generator = MockDataGenerator()
 
 
@@ -197,9 +306,16 @@ def get_metrics():
         'cache_hits': metrics['cache_hits'],
         'cache_misses': metrics['cache_misses'],
         'yfinance_failures': metrics['yfinance_failures'],
+        'oplab_failures': metrics['oplab_failures'],
         'avg_response_time': avg_response,
         'cache_size': len(mock_generator.cache),
-        'cached_symbols': list(mock_generator.cache.keys())
+        'cached_symbols': list(mock_generator.cache.keys()),
+        'oplab_available': oplab_client.is_available(),
+        'data_sources': {
+            'oplab': 'available' if oplab_client.is_available() else 'unavailable',
+            'yahoo_finance': 'available',
+            'mock_data': 'available'
+        }
     })
 
 @oplab_bp.route('/health', methods=['GET'])
@@ -228,7 +344,16 @@ def get_user_info():
     if not token:
         return jsonify({'error': 'Token required'}), 401
     
-    # Mock user data based on token
+    # Try to get real user info from OpLab API first
+    if oplab_client.is_available():
+        try:
+            user_data = oplab_client.get_user_info()
+            user_data['dataSource'] = 'oplab'
+            return jsonify(user_data)
+        except Exception as e:
+            logger.warning(f"Failed to get real user info, falling back to mock: {str(e)}")
+    
+    # Fallback to mock user data
     return jsonify({
         'id': 'user_123',
         'name': 'Pedro Developer',
@@ -241,7 +366,8 @@ def get_user_info():
         },
         'permissions': ['read', 'screening', 'fundamentals'],
         'lastLogin': datetime.now().isoformat(),
-        'accountCreated': '2024-01-15T10:00:00Z'
+        'accountCreated': '2024-01-15T10:00:00Z',
+        'dataSource': 'mock'
     })
 
 # New /market endpoints (PR #38 compliance)
@@ -311,15 +437,25 @@ def generate_options_chain(symbol):
 
 @oplab_bp.route('/instruments', methods=['POST'])
 def get_instruments():
-    """Get instruments with filtering"""
+    """Get instruments with filtering - Enhanced with OpLab API integration"""
     try:
         filters = request.get_json() or {}
         
-        # Start with all Brazilian stocks
+        # Try OpLab API first
+        if oplab_client.is_available():
+            try:
+                oplab_data = oplab_client.get_instruments(filters)
+                oplab_data['dataSource'] = 'oplab'
+                logger.info(f"Successfully retrieved {len(oplab_data.get('instruments', []))} instruments from OpLab API")
+                return jsonify(oplab_data)
+            except Exception as e:
+                logger.warning(f"OpLab API failed, falling back to Yahoo Finance: {str(e)}")
+        
+        # Fallback to Yahoo Finance + Mock data
         instruments = []
         
         for stock in mock_generator.brazilian_stocks:
-            # Get realistic price data
+            # Get realistic price data (tries Yahoo Finance first, then mock)
             price_data = mock_generator.get_real_stock_data(stock['symbol'])
             
             instrument = {
@@ -349,7 +485,8 @@ def get_instruments():
             'instruments': instruments,
             'total': len(instruments),
             'filters_applied': filters,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'dataSource': 'yahoo_finance_mock'
         })
         
     except Exception as e:
@@ -357,7 +494,7 @@ def get_instruments():
 
 @oplab_bp.route('/quotes', methods=['POST'])
 def get_quotes():
-    """Get current quotes for symbols"""
+    """Get current quotes for symbols - Enhanced with OpLab API integration"""
     try:
         data = request.get_json()
         symbols = data.get('symbols', [])
@@ -365,6 +502,17 @@ def get_quotes():
         if not symbols:
             return jsonify({'error': 'Symbols required'}), 400
         
+        # Try OpLab API first
+        if oplab_client.is_available():
+            try:
+                oplab_data = oplab_client.get_quotes(symbols)
+                oplab_data['dataSource'] = 'oplab'
+                logger.info(f"Successfully retrieved quotes for {len(oplab_data.get('quotes', []))} symbols from OpLab API")
+                return jsonify(oplab_data)
+            except Exception as e:
+                logger.warning(f"OpLab API quotes failed, falling back to Yahoo Finance: {str(e)}")
+        
+        # Fallback to Yahoo Finance + Mock data
         quotes = []
         for symbol in symbols:
             # Find stock info
@@ -372,7 +520,7 @@ def get_quotes():
             if not stock_info:
                 continue
                 
-            # Get realistic price data
+            # Get realistic price data (tries Yahoo Finance first, then mock)
             price_data = mock_generator.get_real_stock_data(symbol)
             
             quote = {
@@ -395,8 +543,9 @@ def get_quotes():
         return jsonify({
             'quotes': quotes,
             'requested': len(symbols),
-            'returned': len(quotes),
-            'timestamp': datetime.now().isoformat()
+            'found': len(quotes),
+            'timestamp': datetime.now().isoformat(),
+            'dataSource': 'yahoo_finance_mock'
         })
         
     except Exception as e:
@@ -404,14 +553,25 @@ def get_quotes():
 
 @oplab_bp.route('/fundamentals/<symbol>', methods=['GET'])
 def get_fundamentals(symbol):
-    """Get fundamental data for a symbol"""
+    """Get fundamental data for a symbol - Enhanced with OpLab API integration"""
     try:
-        # Find stock info
+        # Try OpLab API first
+        if oplab_client.is_available():
+            try:
+                oplab_data = oplab_client.get_fundamentals(symbol)
+                oplab_data['dataSource'] = 'oplab'
+                logger.info(f"Successfully retrieved fundamentals for {symbol} from OpLab API")
+                return jsonify(oplab_data)
+            except Exception as e:
+                logger.warning(f"OpLab API fundamentals failed for {symbol}, falling back to mock: {str(e)}")
+        
+        # Fallback to mock data
         stock_info = next((s for s in mock_generator.brazilian_stocks if s['symbol'] == symbol), None)
         if not stock_info:
             return jsonify({'error': 'Symbol not found'}), 404
         
         fundamentals = mock_generator.generate_fundamentals(symbol, stock_info['sector'])
+        fundamentals['dataSource'] = 'mock'
         
         return jsonify({
             'fundamentals': fundamentals,
