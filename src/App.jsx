@@ -248,7 +248,7 @@ function App() {
   const mainTabs = getMainTabs()
   const adminDropdownItems = getAdminDropdownItems()
 
-  // Render login when user is not authenticated
+  // Check authentication after all hooks to maintain consistent hook order per React rules
   if (!isAuthenticated) {
     return <Login />
   }
