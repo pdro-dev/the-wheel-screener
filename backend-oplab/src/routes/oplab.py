@@ -945,7 +945,11 @@ def calculate_volatility(prices):
     for i in range(1, len(prices)):
         if prices[i-1] == 0:
             continue
-        returns.append((prices[i] - prices[i-1]) / prices[i-1])
+    epsilon = 1e-8
+    returns = []
+    for i in range(1, len(prices)):
+        denom = max(abs(prices[i-1]), epsilon)
+        returns.append((prices[i] - prices[i-1]) / denom)
 
     if not returns:
         return 0.5
