@@ -114,7 +114,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: desenvolvimento
     needs: [test-backend, test-frontend]
-
     env:
       OPLAB_API_TOKEN: ${{ secrets.OPLAB_API_TOKEN }}
 
