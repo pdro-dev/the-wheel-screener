@@ -6,6 +6,7 @@ import {
   API_ENDPOINTS,
   updateRefreshInterval,
   getOpLabService,
+  __resetOpLabService,
   ScreeningUtils
 } from '../opLabAPI'
 
@@ -24,7 +25,9 @@ describe('OpLabAPIService', () => {
   let service
 
   beforeEach(() => {
-    API_CONFIG.baseURL = '/api'
+    API_CONFIG.baseURL = 'https://api.oplab.com.br/v3'
+    API_CONFIG.retryAttempts = 1
+    API_CONFIG.retryDelay = 0
     service = new OpLabAPIService('test-token')
     mockFetch.mockClear()
     vi.clearAllTimers()
@@ -140,7 +143,7 @@ describe('OpLabAPIService', () => {
 
       expect(result).toEqual(responseData)
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/test',
+        'https://api.oplab.com.br/v3/test',
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({
@@ -184,6 +187,7 @@ describe('OpLabAPIService', () => {
 
     it('should retry on server errors', async () => {
       vi.useRealTimers()
+      API_CONFIG.retryAttempts = 2
       mockFetch
         .mockResolvedValueOnce(
           createMockResponse(
@@ -216,9 +220,11 @@ describe('OpLabAPIService', () => {
     })
 
     it('should handle timeout', async () => {
-      vi.useRealTimers()
-      mockFetch.mockImplementation(() =>
-        new Promise((resolve) => {
+      mockFetch.mockImplementation((_, options) =>
+        new Promise((resolve, reject) => {
+          options.signal.addEventListener('abort', () =>
+            reject(new DOMException('Aborted', 'AbortError'))
+          )
           setTimeout(() => resolve({
             ok: true,
             json: () => Promise.resolve({ data: 'late' }),
@@ -227,10 +233,14 @@ describe('OpLabAPIService', () => {
         })
       )
 
-      await expect(service.executeRequest({
+      const promise = service.executeRequest({
         endpoint: '/test',
         options: { method: 'GET' }
-      })).rejects.toThrow()
+      })
+
+      vi.advanceTimersByTime(API_CONFIG.timeout + 1000)
+
+      await expect(promise).rejects.toThrow()
     })
   })
 
@@ -243,7 +253,7 @@ describe('OpLabAPIService', () => {
 
       expect(result).toEqual(mockData)
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/instruments',
+        'https://api.oplab.com.br/v3/market/instruments',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ sector: 'Oil' })
@@ -259,7 +269,7 @@ describe('OpLabAPIService', () => {
 
       expect(result).toEqual(mockData)
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/quotes',
+        'https://api.oplab.com.br/v3/market/quote',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ symbols: ['PETR4', 'VALE3'] })
@@ -274,7 +284,7 @@ describe('OpLabAPIService', () => {
       const result = await service.getFundamentals('PETR4')
 
       expect(result).toEqual(mockData)
-      expect(mockFetch).toHaveBeenCalledWith('/api/fundamentals/PETR4', expect.any(Object))
+      expect(mockFetch).toHaveBeenCalledWith('https://api.oplab.com.br/v3/market/fundamentals/PETR4', expect.any(Object))
     })
 
     it('should check health', async () => {
@@ -284,7 +294,7 @@ describe('OpLabAPIService', () => {
       const result = await service.checkHealth()
 
       expect(result).toEqual(mockData)
-      expect(mockFetch).toHaveBeenCalledWith('/api/health', expect.any(Object))
+      expect(mockFetch).toHaveBeenCalledWith('https://api.oplab.com.br/v3/health', expect.any(Object))
     })
 
     it('should get user info', async () => {
@@ -294,7 +304,7 @@ describe('OpLabAPIService', () => {
       const result = await service.getUserInfo()
 
       expect(result).toEqual(mockData)
-      expect(mockFetch).toHaveBeenCalledWith('/api/user', expect.any(Object))
+      expect(mockFetch).toHaveBeenCalledWith('https://api.oplab.com.br/v3/user', expect.any(Object))
     })
   })
 
@@ -307,6 +317,8 @@ describe('OpLabAPIService', () => {
       const mockQuotes = [
         { symbol: 'PETR4', price: 32.45, volume: 1000000 }
       ]
+      const mockFundamentals = {
+        symbol: 'PETR4', roic: 8.2, roe: 12, debtToEquity: 0.4
       const mockFundamentals = [
         { symbol: 'PETR4', roic: 8.2, roe: 12, debtToEquity: 0.4 }
       ]
@@ -364,7 +376,10 @@ describe('OpLabAPIService', () => {
         fundamental: { roic: 15, roe: 18, debtToEquity: 0.3, revenueGrowth: 0.15 }
       }
 
-      const score = service.calculateWheelScore(stock, { minVolume: 100000 })
+      const score = service.calculateWheelScore({
+        ...stock,
+        filters: { minVolume: 100000 }
+      })
 
       expect(score).toBeGreaterThan(50)
       expect(score).toBeLessThanOrEqual(100)
@@ -377,7 +392,10 @@ describe('OpLabAPIService', () => {
         fundamental: {}
       }
 
-      const score = service.calculateWheelScore(stock, { minVolume: 100000 })
+      const score = service.calculateWheelScore({
+        ...stock,
+        filters: { minVolume: 100000 }
+      })
 
       expect(score).toBeGreaterThan(0)
       expect(score).toBeLessThanOrEqual(100)
@@ -498,9 +516,7 @@ describe('OpLabAPIError', () => {
 
 describe('Default Service Instance', () => {
   afterEach(() => {
-    // Reset the default service
-    const module = require('../opLabAPI')
-    module.defaultService = null
+    __resetOpLabService()
   })
 
   it('should create default service instance', () => {

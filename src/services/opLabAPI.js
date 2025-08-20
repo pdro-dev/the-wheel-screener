@@ -2,8 +2,9 @@
 
 // API Configuration
 export const API_CONFIG = {
-  // Base URL now defaults to local proxy but can be overridden for production
-  baseURL: import.meta?.env?.VITE_OPLAB_API_URL || '/api',
+  // Base URL now points to OpLab's v3 API but can be overridden
+  baseURL: import.meta?.env?.VITE_OPLAB_API_URL ||
+    'https://api.oplab.com.br/v3',
   timeout: 30000,
   retryAttempts: 3,
   retryDelay: 1000,
@@ -553,8 +554,13 @@ export function getOpLabService(token = null) {
   } else if (token) {
     defaultService.setToken(token)
   }
-  
+
   return defaultService
+}
+
+// Internal helper for tests to reset the singleton instance
+export function __resetOpLabService() {
+  defaultService = null
 }
 
 // Utility functions for screening filters

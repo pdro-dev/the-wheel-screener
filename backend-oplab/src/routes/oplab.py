@@ -32,7 +32,7 @@ metrics = {
 # OpLab API Client for real integration
 class OpLabAPIClient:
     def __init__(self):
-        self.base_url = "https://api.oplab.com.br/v1"
+        self.base_url = "https://api.oplab.com.br/v3"
         self.token = os.getenv('OPLAB_API_TOKEN')
         self.session = requests.Session()
         
@@ -722,7 +722,8 @@ def get_fundamentals(symbol):
             'timestamp': datetime.now().isoformat(),
             'dataSource': 'mock'
         }
-
+        metrics['total_response_time'] += (time.time() - start)
+        return jsonify(resp)
     except Exception as e:
         metrics['total_response_time'] += (time.time() - start)
         return jsonify({'error': str(e)}), 500
