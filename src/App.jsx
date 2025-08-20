@@ -149,11 +149,6 @@ function App() {
   const debouncedSearch = useDebounce(filters.search, 300)
   const { cachedResults, setCachedResults } = useResultCache()
 
-  // Login component
-  if (!isAuthenticated) {
-    return <Login />
-  }
-
   // Main navigation tabs - different for user vs admin
   const getMainTabs = () => {
     const baseTabs = [
@@ -252,6 +247,11 @@ function App() {
 
   const mainTabs = getMainTabs()
   const adminDropdownItems = getAdminDropdownItems()
+
+  // Render login when user is not authenticated
+  if (!isAuthenticated) {
+    return <Login />
+  }
 
   return (
     <ErrorBoundary>
