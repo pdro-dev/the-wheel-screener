@@ -185,10 +185,10 @@ const TutorialPageExpanded = () => {
                   <div>
                     <strong>Cenários:</strong>
                     <ul className="mt-2 space-y-1">
-                      <li>PETR4 > R$ 30: Lucro R$ 120</li>
+                        <li>PETR4 &gt; R$ 30: Lucro R$ 120</li>
                       <li>PETR4 = R$ 29: Exercício + R$ 20</li>
                       <li>PETR4 = R$ 28: Exercício - R$ 80</li>
-                      <li>PETR4 < R$ 28,80: Prejuízo</li>
+                      <li>PETR4 &lt; R$ 28,80: Prejuízo</li>
                     </ul>
                   </div>
                 </div>
@@ -211,7 +211,7 @@ const TutorialPageExpanded = () => {
             
             <div className="grid md:grid-cols-3 gap-4">
               <div className="bg-white p-4 rounded border">
-                <h4 className="font-semibold text-red-600">Ratio > 1.0</h4>
+                <h4 className="font-semibold text-red-600">Ratio &gt; 1.0</h4>
                 <p className="text-sm">Sentimento pessimista</p>
                 <p className="text-sm">Mais puts que calls</p>
                 <p className="text-sm"><strong>Estratégia:</strong> Vender puts</p>
@@ -223,7 +223,7 @@ const TutorialPageExpanded = () => {
                 <p className="text-sm"><strong>Estratégia:</strong> The Wheel normal</p>
               </div>
               <div className="bg-white p-4 rounded border">
-                <h4 className="font-semibold text-green-600">Ratio < 0.7</h4>
+                <h4 className="font-semibold text-green-600">Ratio &lt; 0.7</h4>
                 <p className="text-sm">Sentimento otimista</p>
                 <p className="text-sm">Mais calls que puts</p>
                 <p className="text-sm"><strong>Estratégia:</strong> Covered calls</p>
@@ -243,7 +243,7 @@ const TutorialPageExpanded = () => {
                   </p>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-sm">VIX < 20%:</span>
+                      <span className="text-sm">VIX &lt; 20%:</span>
                       <Badge variant="outline" className="text-green-600">Baixa volatilidade</Badge>
                     </div>
                     <div className="flex justify-between">
@@ -251,7 +251,7 @@ const TutorialPageExpanded = () => {
                       <Badge variant="outline" className="text-yellow-600">Volatilidade moderada</Badge>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm">VIX > 30%:</span>
+                      <span className="text-sm">VIX &gt; 30%:</span>
                       <Badge variant="outline" className="text-red-600">Alta volatilidade</Badge>
                     </div>
                   </div>
