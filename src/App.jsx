@@ -11,7 +11,8 @@ import {
   RefreshCw,
   Filter,
   Activity,
-  PieChart
+  PieChart,
+  BookOpen
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,6 +47,7 @@ import {
   ConnectionStatus,
   ProgressIndicator
 } from '@/components/LoadingStates'
+import TutorialPage from '@/components/tutorial/TutorialPage'
 import {
   TokenConfiguration,
   InlineAPIStatus
@@ -453,7 +455,7 @@ function App() {
 
           {/* Navigation Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className={`grid w-full ${user?.name === 'admin' ? 'grid-cols-8' : 'grid-cols-4'}`}>
+            <TabsList className={`grid w-full ${user?.name === 'admin' ? 'grid-cols-9' : 'grid-cols-5'}`}>
               <TabsTrigger value="screening" className="flex items-center gap-2">
                 <Search className="h-4 w-4" />
                 Screening
@@ -465,6 +467,10 @@ function App() {
               <TabsTrigger value="options" className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
                 Opções
+              </TabsTrigger>
+              <TabsTrigger value="tutorial" className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4" />
+                Tutorial
               </TabsTrigger>
               <TabsTrigger value="api-config" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
@@ -730,12 +736,17 @@ function App() {
               <OptionsGrid />
             </TabsContent>
 
-            {/* API Config Tab */}
-            <TabsContent value="api-config">
-              <TokenConfiguration onTokenSave={handleTokenSave} />
+            {/* Tutorial Tab */}
+            <TabsContent value="tutorial">
+              <TutorialPage />
             </TabsContent>
 
-            {/* Admin-only tabs content */}
+            {/* API Config Tab */}
+            <TabsContent value="api-config">
+              <TokenConfiguration />
+            </TabsContent>
+
+            {/* Admin-only tabs */}
             {user?.name === 'admin' && (
               <>
                 {/* API Metrics Tab */}

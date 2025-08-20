@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "nav": [
+    { "id": "intro", "title": "Introdução ao The Wheel", "anchor": "introducao-ao-the-wheel" },
+    { "id": "quant", "title": "Fundamentos de Trading Quantitativo", "anchor": "fundamentos-de-trading-quantitativo" },
+    { "id": "sentiment", "title": "Indicadores de Sentimento e Opções", "anchor": "indicadores-de-sentimento-e-opcoes" },
+    { "id": "macro", "title": "Indicadores Macroeconômicos", "anchor": "indicadores-macroeconomicos" },
+    { "id": "models", "title": "Modelos Quantitativos de Apoio", "anchor": "modelos-quantitativos-de-apoio" },
+    { "id": "data", "title": "Dados Disponíveis na Aplicação", "anchor": "dados-disponiveis-na-aplicacao" },
+    { "id": "interactivity", "title": "Interatividade", "anchor": "interatividade" },
+    { "id": "best-practices", "title": "Boas Práticas", "anchor": "boas-praticas" }
+  ],
+  "quizzes": {
+    "wheel-basics": {
+      "id": "wheel-basics",
+      "title": "Conceitos Básicos de The Wheel",
+      "questions": [
+        {
+          "id": "q1",
+          "prompt": "Na venda de put cash-secured, qual é a fonte de retorno principal?",
+          "choices": [
+            "Apreciação do ativo subjacente",
+            "Prêmio recebido na venda da put",
+            "Dividendos",
+            "Alavancagem com margem"
+          ],
+          "answerIndex": 1,
+          "explanation": "O retorno primário é o prêmio recebido ao vender a put; se exercido, o custo efetivo é strike - prêmio."
+        },
+        {
+          "id": "q2",
+          "prompt": "Após ser exercido na put, o próximo passo no The Wheel é:",
+          "choices": [
+            "Vender outra put",
+            "Comprar calls a mercado",
+            "Vender covered call sobre as ações recebidas",
+            "Encerrar a estratégia"
+          ],
+          "answerIndex": 2,
+          "explanation": "Com as ações em carteira, vende-se covered call para continuar gerando renda."
+        },
+        {
+          "id": "q3",
+          "prompt": "IV Rank elevado tende a implicar:",
+          "choices": [
+            "Prêmios de opções mais baixos",
+            "Prêmios de opções mais altos",
+            "Menor risco de exercício",
+            "Delta próximo de zero"
+          ],
+          "answerIndex": 1,
+          "explanation": "IV Rank alto indica IV alta vs. histórico, elevando prêmios; risco e variância também tendem a aumentar."
+        },
+        {
+          "id": "q4",
+          "prompt": "Qual é o principal risco da estratégia The Wheel?",
+          "choices": [
+            "Não receber prêmios",
+            "Exercício em mercados em queda",
+            "Volatilidade baixa",
+            "Falta de liquidez"
+          ],
+          "answerIndex": 1,
+          "explanation": "O maior risco é ser exercido durante quedas acentuadas, resultando em drawdowns significativos."
+        },
+        {
+          "id": "q5",
+          "prompt": "O que significa 'cash-secured' na venda de puts?",
+          "choices": [
+            "Usar margem para a operação",
+            "Ter caixa suficiente para comprar as ações se exercido",
+            "Garantir o prêmio recebido",
+            "Usar derivativos como garantia"
+          ],
+          "answerIndex": 1,
+          "explanation": "Cash-secured significa ter o valor total (strike × 100 ações) disponível em caixa para eventual exercício."
+        }
+      ]
+    },
+    "technical-indicators": {
+      "id": "technical-indicators",
+      "title": "Indicadores Técnicos e Sentimento",
+      "questions": [
+        {
+          "id": "t1",
+          "prompt": "Put/Call Ratio alto geralmente indica:",
+          "choices": [
+            "Sentimento otimista",
+            "Sentimento pessimista",
+            "Mercado neutro",
+            "Alta volatilidade"
+          ],
+          "answerIndex": 1,
+          "explanation": "Put/Call Ratio alto indica mais interesse em puts (proteção/pessimismo) vs calls (otimismo)."
+        },
+        {
+          "id": "t2",
+          "prompt": "VIX alto é associado com:",
+          "choices": [
+            "Baixa volatilidade esperada",
+            "Alta volatilidade esperada",
+            "Mercado em alta",
+            "Baixo volume de negociação"
+          ],
+          "answerIndex": 1,
+          "explanation": "VIX mede a volatilidade implícita esperada; valores altos indicam expectativa de maior volatilidade."
+        },
+        {
+          "id": "t3",
+          "prompt": "Open Interest (OI) representa:",
+          "choices": [
+            "Volume negociado no dia",
+            "Número de contratos em aberto",
+            "Preço de abertura",
+            "Interesse dos investidores"
+          ],
+          "answerIndex": 1,
+          "explanation": "Open Interest é o número total de contratos de opções que permanecem em aberto."
+        }
+      ]
+    }
+  },
+  "simulations": [
+    { "id": "sim-put", "title": "Simulador de Put Cash-Secured", "component": "WheelSimulator", "mode": "put" },
+    { "id": "sim-cc", "title": "Simulador de Covered Call", "component": "WheelSimulator", "mode": "coveredCall" }
+  ],
+  "glossary": {
+    "IV Rank": "Percentil da volatilidade implícita em relação ao histórico do ativo.",
+    "Delta": "Sensibilidade do preço da opção ao preço do subjacente; aproxima a probabilidade de expirar ITM.",
+    "DTE": "Dias até o vencimento da opção.",
+    "Open Interest (OI)": "Número de contratos de opções em aberto.",
+    "Breakeven": "Preço de equilíbrio: put (strike - prêmio), call coberta (custo - prêmio).",
+    "ROIC": "Retorno sobre capital investido (neste contexto, sobre o colateral líquido).",
+    "Slippage": "Diferença entre preço esperado e executado, normalmente por spreads/liquidez.",
+    "ITM": "In The Money - opção com valor intrínseco positivo.",
+    "OTM": "Out of The Money - opção sem valor intrínseco.",
+    "ATM": "At The Money - opção com strike próximo ao preço do subjacente.",
+    "Theta": "Sensibilidade do preço da opção à passagem do tempo (decaimento temporal).",
+    "Vega": "Sensibilidade do preço da opção à volatilidade implícita.",
+    "Gamma": "Sensibilidade do delta à mudança no preço do subjacente.",
+    "Strike": "Preço de exercício da opção.",
+    "Premium": "Prêmio pago ou recebido pela opção.",
+    "Assignment": "Exercício da opção pelo comprador.",
+    "Expiration": "Data de vencimento da opção.",
+    "Underlying": "Ativo subjacente da opção (ação, índice, etc.).",
+    "Volatility": "Medida de variação do preço do ativo.",
+    "Implied Volatility": "Volatilidade implícita nas opções pelo mercado.",
+    "Historical Volatility": "Volatilidade calculada com base nos preços históricos.",
+    "Bid": "Preço de compra (maior preço que alguém está disposto a pagar).",
+    "Ask": "Preço de venda (menor preço que alguém está disposto a vender).",
+    "Spread": "Diferença entre bid e ask.",
+    "Volume": "Quantidade de contratos negociados em um período.",
+    "Liquidity": "Facilidade de comprar/vender um ativo sem afetar significativamente seu preço."
+  }
+}
+
