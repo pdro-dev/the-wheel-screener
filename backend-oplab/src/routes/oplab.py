@@ -251,7 +251,9 @@ class MockDataGenerator:
 
     def get_real_stock_data(self, symbol):
         """Try to get real data from Yahoo Finance, fallback to mock"""
-        now = datetime.now()
+
+        now = datetime.utcnow()
+
         cached = self.cache.get(symbol)
         if cached and now - cached['timestamp'] < self.cache_ttl:
             metrics['cache_hits'] += 1
@@ -524,7 +526,8 @@ def generate_options_chain(symbol):
 
     # Generate options for next 3 months
     for months in [1, 2, 3]:
-        expiry_date = (datetime.now() + timedelta(days=30 * months)).strftime('%Y-%m-%d')
+
+        expiry_date = (datetime.now() + timedelta(days=30*months)).strftime('%Y-%m-%d')
 
 
         for strike_offset in [-20, -10, -5, 0, 5, 10, 20]:
@@ -534,6 +537,7 @@ def generate_options_chain(symbol):
                 'strike': round(strike, 2),
                 'expiry': expiry_date,
                 'call': {
+                    'bid': round(max(0.1, base_price - strike + random.uniform(-2, 2)), 2),
                     'bid': round(max(0.1, max(0, base_price - strike) + random.uniform(-2, 2)), 2),
                     'ask': round(max(0.2, max(0, base_price - strike) + random.uniform(-1, 3)), 2),
                     'volume': random.randint(0, 1000),
@@ -541,6 +545,7 @@ def generate_options_chain(symbol):
                     'impliedVolatility': round(random.uniform(0.15, 0.45), 3)
                 },
                 'put': {
+                    'bid': round(max(0.1, strike - base_price + random.uniform(-2, 2)), 2),
                     'bid': round(max(0.1, max(0, strike - base_price) + random.uniform(-2, 2)), 2),
                     'ask': round(max(0.2, max(0, strike - base_price) + random.uniform(-1, 3)), 2),
                     'volume': random.randint(0, 1000),
@@ -660,6 +665,7 @@ def get_quotes(symbols=None):
             price_data = mock_generator.get_real_stock_data(symbol)
 
 
+
             if not instrument:
                 instrument = Instrument(
                     symbol=symbol,
@@ -696,6 +702,7 @@ def get_quotes(symbols=None):
             db.session.add(quote)
             db.session.commit()
             quotes.append(quote.to_dict())
+
 
 
             quote = {
@@ -739,6 +746,7 @@ def get_fundamentals(symbol):
     try:
         client = get_oplab_client()
 
+
         # Try OpLab API first
         if client.is_available():
             try:
@@ -749,6 +757,7 @@ def get_fundamentals(symbol):
                 return jsonify(oplab_data)
             except Exception as e:
                 logger.warning(f"OpLab API fundamentals failed for {symbol}, falling back to mock: {str(e)}")
+
 
         # Fallback to mock data
         stock_info = next((s for s in mock_generator.brazilian_stocks if s['symbol'] == symbol), None)
@@ -990,11 +999,16 @@ def calculate_volatility(prices):
     if len(prices) < 2:
         return 0.5
 
+
+    returns = []
+    for i in range(1, len(prices)):
+        if prices[i-1] == 0:
+            continue
     epsilon = 1e-8
     returns = []
     for i in range(1, len(prices)):
-        denom = max(abs(prices[i - 1]), epsilon)
-        returns.append((prices[i] - prices[i - 1]) / denom)
+        denom = max(abs(prices[i-1]), epsilon)
+        returns.append((prices[i] - prices[i-1]) / denom)
 
 
     if not returns:
@@ -1003,8 +1017,8 @@ def calculate_volatility(prices):
     mean_return = sum(returns) / len(returns)
     variance = sum((r - mean_return) ** 2 for r in returns) / len(returns)
 
-    return (variance ** 0.5) * (252 ** 0.5)
 
+    return (variance ** 0.5) * (252 ** 0.5)  # Annualized
 
 
 
@@ -1024,6 +1038,7 @@ def calculate_trend(prices):
 
     denom = n * sum_xx - sum_x * sum_x
     if denom == 0:
+
         return 0
 
     slope = (n * sum_xy - sum_x * sum_y) / denom
@@ -1031,6 +1046,7 @@ def calculate_trend(prices):
     avg_y = (sum_y / n) if n else 1
     if avg_y == 0:
         return 0
+
 
     return slope / avg_y  # Normalized slope
 
