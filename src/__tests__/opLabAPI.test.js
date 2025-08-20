@@ -29,7 +29,7 @@ describe('OpLabAPIService', () => {
     API_CONFIG.retryAttempts = 1
     API_CONFIG.retryDelay = 0
     service = new OpLabAPIService('test-token')
-    mockFetch.mockReset()
+    mockFetch.mockClear()
     vi.clearAllTimers()
     vi.useFakeTimers()
   })
