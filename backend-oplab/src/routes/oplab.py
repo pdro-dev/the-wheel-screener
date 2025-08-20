@@ -532,7 +532,6 @@ def generate_options_chain(symbol):
                     'impliedVolatility': round(random.uniform(0.15, 0.45), 3)
                 },
                 'put': {
-                    'bid': round(max(0.1, strike - base_price + random.uniform(-2, 2)), 2),
                     'bid': round(max(0.1, max(0, strike - base_price) + random.uniform(-2, 2)), 2),
                     'ask': round(max(0.2, max(0, strike - base_price) + random.uniform(-1, 3)), 2),
                     'volume': random.randint(0, 1000),
