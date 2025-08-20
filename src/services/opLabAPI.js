@@ -18,7 +18,7 @@ export const API_CONFIG = {
   }
 }
 
-export function setRefreshInterval(endpoint, ms) {
+export function updateRefreshInterval(endpoint, ms) {
   if (typeof ms === 'number' && ms >= 0) {
     API_CONFIG.refreshIntervals[endpoint] = ms
   }
@@ -143,13 +143,18 @@ export class OpLabAPIService {
           ...options,
           headers: {
             'Content-Type': 'application/json',
-            ...(this.token && { 'Access-Token': this.token }),
+            ...(this.token && { 'x-oplab-token': this.token }),
             ...options.headers
           },
           signal: controller.signal
         })
 
         clearTimeout(timeoutId)
+
+        const newToken = response.headers.get('x-oplab-token')
+        if (newToken) {
+          this.setToken(newToken)
+        }
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}))
@@ -230,24 +235,21 @@ export class OpLabAPIService {
 
   // API Methods
   async getInstruments(filters = {}) {
-    const data = await this.makeRequest(API_ENDPOINTS.instruments, {
+    return this.makeRequest(API_ENDPOINTS.instruments, {
       method: 'POST',
       body: JSON.stringify(filters)
     })
-    return data?.instruments ?? data
   }
 
   async getQuotes(symbols) {
-    const data = await this.makeRequest(API_ENDPOINTS.quotes, {
+    return this.makeRequest(API_ENDPOINTS.quotes, {
       method: 'POST',
       body: JSON.stringify({ symbols })
     })
-    return data?.quotes ?? data
   }
 
   async getFundamentals(symbol) {
-    const data = await this.makeRequest(`${API_ENDPOINTS.fundamentals}/${symbol}`)
-    return data?.fundamentals ?? data
+    return this.makeRequest(`${API_ENDPOINTS.fundamentals}/${symbol}`)
   }
 
   async getOptions(symbol, filters = {}) {

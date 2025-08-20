@@ -187,3 +187,261 @@ export function formatNumber(value, decimals = 2) {
   }).format(value);
 }
 
+
+/**
+ * FUNÇÕES AVANÇADAS BASEADAS NO CONTEÚDO DO PDF
+ * Implementação de Greeks e cálculos específicos para o mercado brasileiro
+ */
+
+// Função auxiliar para distribuição normal padrão
+function normalCDF(x) {
+  return 0.5 * (1 + erf(x / Math.sqrt(2)));
+}
+
+// Função auxiliar para densidade de probabilidade normal
+function normalPDF(x) {
+  return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+}
+
+// Função auxiliar para erro (aproximação)
+function erf(x) {
+  const a1 =  0.254829592;
+  const a2 = -0.284496736;
+  const a3 =  1.421413741;
+  const a4 = -1.453152027;
+  const a5 =  1.061405429;
+  const p  =  0.3275911;
+
+  const sign = x < 0 ? -1 : 1;
+  x = Math.abs(x);
+
+  const t = 1.0 / (1.0 + p * x);
+  const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+
+  return sign * y;
+}
+
+// Cálculo de d1 para Black-Scholes
+function calculateD1(S, K, T, r, sigma) {
+  return (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
+}
+
+/**
+ * Cálculo de Delta - sensibilidade ao preço do subjacente
+ * @param {number} S - Preço atual do subjacente
+ * @param {number} K - Strike da opção
+ * @param {number} T - Tempo até vencimento (em anos)
+ * @param {number} r - Taxa livre de risco (SELIC/CDI)
+ * @param {number} sigma - Volatilidade implícita
+ * @param {string} type - 'call' ou 'put'
+ * @returns {number} Delta da opção
+ */
+export function calculateDelta(S, K, T, r, sigma, type) {
+  if (T <= 0) return type === 'call' ? (S > K ? 1 : 0) : (S < K ? -1 : 0);
+  
+  const d1 = calculateD1(S, K, T, r, sigma);
+  
+  if (type === 'call') {
+    return normalCDF(d1);
+  } else {
+    return normalCDF(d1) - 1;
+  }
+}
+
+/**
+ * Cálculo de Gamma - aceleração do Delta
+ * @param {number} S - Preço atual do subjacente
+ * @param {number} K - Strike da opção
+ * @param {number} T - Tempo até vencimento (em anos)
+ * @param {number} r - Taxa livre de risco
+ * @param {number} sigma - Volatilidade implícita
+ * @returns {number} Gamma da opção
+ */
+export function calculateGamma(S, K, T, r, sigma) {
+  if (T <= 0) return 0;
+  
+  const d1 = calculateD1(S, K, T, r, sigma);
+  return normalPDF(d1) / (S * sigma * Math.sqrt(T));
+}
+
+/**
+ * Cálculo de Theta - decay temporal (adaptado para mercado brasileiro)
+ * @param {number} S - Preço atual do subjacente
+ * @param {number} K - Strike da opção
+ * @param {number} T - Tempo até vencimento (em anos)
+ * @param {number} r - Taxa livre de risco (SELIC ~13% aa)
+ * @param {number} sigma - Volatilidade implícita
+ * @param {string} type - 'call' ou 'put'
+ * @returns {number} Theta da opção (decay diário)
+ */
+export function calculateTheta(S, K, T, r, sigma, type) {
+  if (T <= 0) return 0;
+  
+  const d1 = calculateD1(S, K, T, r, sigma);
+  const d2 = d1 - sigma * Math.sqrt(T);
+  
+  const term1 = -(S * normalPDF(d1) * sigma) / (2 * Math.sqrt(T));
+  
+  if (type === 'call') {
+    const term2 = r * K * Math.exp(-r * T) * normalCDF(d2);
+    return (term1 - term2) / 365; // Convertido para decay diário
+  } else {
+    const term2 = r * K * Math.exp(-r * T) * normalCDF(-d2);
+    return (term1 + term2) / 365; // Convertido para decay diário
+  }
+}
+
+/**
+ * Cálculo de Vega - sensibilidade à volatilidade
+ * @param {number} S - Preço atual do subjacente
+ * @param {number} K - Strike da opção
+ * @param {number} T - Tempo até vencimento (em anos)
+ * @param {number} r - Taxa livre de risco
+ * @param {number} sigma - Volatilidade implícita
+ * @returns {number} Vega da opção
+ */
+export function calculateVega(S, K, T, r, sigma) {
+  if (T <= 0) return 0;
+  
+  const d1 = calculateD1(S, K, T, r, sigma);
+  return S * normalPDF(d1) * Math.sqrt(T) / 100; // Dividido por 100 para % de volatilidade
+}
+
+/**
+ * Calcula probabilidade de exercício baseada no Delta
+ * @param {number} delta - Delta da opção
+ * @param {string} type - 'call' ou 'put'
+ * @returns {number} Probabilidade em percentual (0-100)
+ */
+export function calculateExerciseProbability(delta, type) {
+  if (type === 'put') {
+    return Math.abs(delta) * 100; // Delta negativo para puts
+  } else {
+    return delta * 100; // Delta positivo para calls
+  }
+}
+
+/**
+ * Cálculo de Break-even para estratégias The Wheel
+ * @param {number} strike - Strike da opção
+ * @param {number} premium - Prêmio recebido por ação
+ * @param {string} type - 'put' ou 'call'
+ * @returns {number} Preço de break-even
+ */
+export function calculateBreakEven(strike, premium, type) {
+  if (type === 'put') {
+    return strike - premium; // Put: Strike - Prêmio recebido
+  } else {
+    return strike + premium; // Call: Strike + Prêmio recebido
+  }
+}
+
+/**
+ * Cálculo de ROI anualizado específico para mercado brasileiro
+ * @param {number} premium - Prêmio recebido
+ * @param {number} capital - Capital empregado
+ * @param {number} days - Dias da operação
+ * @returns {number} ROI anualizado em percentual
+ */
+export function calculateAnnualizedROI(premium, capital, days) {
+  if (capital <= 0 || days <= 0) return 0;
+  
+  const periodReturn = premium / capital;
+  const periodsPerYear = 365 / days;
+  return ((1 + periodReturn) ** periodsPerYear - 1) * 100;
+}
+
+/**
+ * Simulação de rolagem de opções
+ * @param {number} currentPrice - Preço atual da opção
+ * @param {number} newPrice - Preço da nova opção
+ * @param {number} contracts - Número de contratos
+ * @returns {Object} Resultado da rolagem
+ */
+export function calculateRollCost(currentPrice, newPrice, contracts = 1) {
+  const rollCost = (newPrice - currentPrice) * contracts * 100;
+  return {
+    cost: rollCost,
+    isCredit: rollCost < 0,
+    netCredit: Math.abs(rollCost),
+    description: rollCost < 0 ? 'Crédito recebido' : 'Débito pago'
+  };
+}
+
+/**
+ * Dados de exemplo de ações brasileiras líquidas (baseado no PDF)
+ */
+export const BRAZILIAN_STOCKS = {
+  PETR4: {
+    name: 'Petrobras PN',
+    sector: 'Petróleo e Gás',
+    avgVolatility: 0.35,
+    avgPrice: 28.50,
+    liquidityRating: 'Alta'
+  },
+  VALE3: {
+    name: 'Vale ON',
+    sector: 'Mineração',
+    avgVolatility: 0.32,
+    avgPrice: 65.40,
+    liquidityRating: 'Alta'
+  },
+  ITUB4: {
+    name: 'Itaú Unibanco PN',
+    sector: 'Bancos',
+    avgVolatility: 0.28,
+    avgPrice: 37.80,
+    liquidityRating: 'Alta'
+  },
+  BBAS3: {
+    name: 'Banco do Brasil ON',
+    sector: 'Bancos',
+    avgVolatility: 0.30,
+    avgPrice: 45.20,
+    liquidityRating: 'Alta'
+  },
+  BOVA11: {
+    name: 'ETF Bovespa',
+    sector: 'ETF',
+    avgVolatility: 0.25,
+    avgPrice: 118.50,
+    liquidityRating: 'Muito Alta'
+  }
+};
+
+/**
+ * Calcula métricas completas de uma opção (Greeks + métricas básicas)
+ * @param {Object} params - Parâmetros da opção
+ * @returns {Object} Métricas completas
+ */
+export function calculateCompleteMetrics(params) {
+  const {
+    underlying,
+    strike,
+    premium,
+    daysToExpiry,
+    volatility = 0.30,
+    riskFreeRate = 0.13, // SELIC ~13%
+    type = 'put'
+  } = params;
+
+  const T = daysToExpiry / 365;
+  
+  const delta = calculateDelta(underlying, strike, T, riskFreeRate, volatility, type);
+  const gamma = calculateGamma(underlying, strike, T, riskFreeRate, volatility);
+  const theta = calculateTheta(underlying, strike, T, riskFreeRate, volatility, type);
+  const vega = calculateVega(underlying, strike, T, riskFreeRate, volatility);
+  
+  const exerciseProbability = calculateExerciseProbability(delta, type);
+  const breakEven = calculateBreakEven(strike, premium, type);
+  
+  return {
+    delta: formatNumber(delta, 4),
+    gamma: formatNumber(gamma, 4),
+    theta: formatNumber(theta, 4),
+    vega: formatNumber(vega, 4),
+    exerciseProbability: formatNumber(exerciseProbability, 1),
+    breakEven: formatCurrency(breakEven)
+  };
+}
+

@@ -151,9 +151,13 @@ build/
 *.temp
 
 
+
 # Python
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyc
 
+# Database files
+backend-oplab/src/database/app.db
+*.db
