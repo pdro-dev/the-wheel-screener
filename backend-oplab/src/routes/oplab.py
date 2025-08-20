@@ -712,7 +712,6 @@ def get_fundamentals(symbol):
             'fundamentals': fundamentals,
             'timestamp': datetime.now().isoformat()
         }
-
         metrics['total_response_time'] += (time.time() - start)
         return jsonify(resp)
 
