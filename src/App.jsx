@@ -56,7 +56,7 @@ import {
   ProgressIndicator
 } from '@/components/LoadingStates'
 import Dashboard from '@/components/Dashboard'
-import TutorialPageExpanded as TutorialPage from '@/components/tutorial/TutorialPageExpanded'
+import TutorialPage from '@/components/tutorial/TutorialPageExpanded'
 import {
   TokenConfiguration,
   InlineAPIStatus
