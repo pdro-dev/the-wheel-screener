@@ -429,8 +429,8 @@ function App() {
                 Identifique as melhores oportunidades para a estratégia "The Wheel"
                 {user && (
                   <span className="ml-2">
-                    • Usuário: <span className="font-semibold capitalize">{user.name}</span>
-                    {user.name === 'admin' && <span className="text-blue-600"> (Administrador)</span>}
+                    • Usuário: <span className="font-semibold capitalize">{user.username}</span>
+                    {user.username === 'admin' && <span className="text-blue-600"> (Administrador)</span>}
                   </span>
                 )}
               </p>
@@ -457,7 +457,7 @@ function App() {
 
           {/* Navigation Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className={`grid w-full ${user?.name === 'admin' ? 'grid-cols-10' : 'grid-cols-6'}`}>
+            <TabsList className={`grid w-full ${user?.username === 'admin' ? 'grid-cols-10' : 'grid-cols-6'}`}>
               <TabsTrigger value="dashboard" className="flex items-center gap-2">
                 <Home className="h-4 w-4" />
                 Dashboard
@@ -483,7 +483,7 @@ function App() {
                 Config API
               </TabsTrigger>
               {/* Admin-only tabs */}
-              {user?.name === 'admin' && (
+              {user?.username === 'admin' && (
                 <>
                   <TabsTrigger value="api-metrics" className="flex items-center gap-2">
                     <Activity className="h-4 w-4" />
@@ -758,7 +758,7 @@ function App() {
             </TabsContent>
 
             {/* Admin-only tabs */}
-            {user?.name === 'admin' && (
+            {user?.username === 'admin' && (
               <>
                 {/* API Metrics Tab */}
                 <TabsContent value="api-metrics">

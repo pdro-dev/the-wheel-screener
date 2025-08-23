@@ -97,7 +97,7 @@ export function UserInfo() {
         <div className="space-y-2">
           <div>
             <Label className="text-sm font-medium">Nome</Label>
-            <p className="text-sm text-muted-foreground">{user.name || 'Não informado'}</p>
+            <p className="text-sm text-muted-foreground">{user.username || 'Não informado'}</p>
           </div>
           <div>
             <Label className="text-sm font-medium">Email</Label>

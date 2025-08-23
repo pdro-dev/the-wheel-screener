@@ -8,7 +8,12 @@ function TestLogin({ username, password }) {
   useEffect(() => {
     login(username, password)
   }, [login, username, password])
-  return <div data-testid="user">{user?.name || ''}</div>
+  return (
+    <>
+      <div data-testid="user">{user?.username || ''}</div>
+      <div data-testid="role">{user?.role || ''}</div>
+    </>
+  )
 }
 
 describe('login', () => {
@@ -18,11 +23,17 @@ describe('login', () => {
 
   it('accepts default admin credentials', async () => {
     render(<TestLogin username="admin" password="admin" />)
-    await waitFor(() => expect(screen.getByTestId('user').textContent).toBe('admin'))
+    await waitFor(() => {
+      expect(screen.getByTestId('user').textContent).toBe('admin')
+      expect(screen.getByTestId('role').textContent).toBe('admin')
+    })
   })
 
   it('ignores username case and trims spaces', async () => {
     render(<TestLogin username=" Admin " password="admin" />)
-    await waitFor(() => expect(screen.getByTestId('user').textContent).toBe('admin'))
+    await waitFor(() => {
+      expect(screen.getByTestId('user').textContent).toBe('admin')
+      expect(screen.getByTestId('role').textContent).toBe('admin')
+    })
   })
 })
