@@ -5,9 +5,10 @@ const API_BASE_URL =
   import.meta.env.VITE_OPLAB_API_URL || 'https://api.oplab.com.br/v3'
 
 // Basic in-memory users for simple authentication
+// Maps username to their password and role
 const VALID_USERS = {
-  admin: 'admin',
-  user: 'user'
+  admin: { password: 'admin', role: 'admin' },
+  user: { password: 'user', role: 'user' }
 }
 
 // Default refresh intervals in milliseconds for each endpoint
@@ -72,17 +73,24 @@ export function useOpLabState() {
   const login = useCallback((username, password) => {
     const normalizedUsername = username.trim().toLowerCase()
     const pass = password.trim()
-    const validPassword = VALID_USERS[normalizedUsername]
-    if (validPassword && validPassword === pass) {
-      const role = normalizedUsername === 'admin' ? 'admin' : 'user'
+
+    const entry = VALID_USERS[name]
+
+    if (entry && entry.password === pass) {
       updateState({
         isAuthenticated: true,
-        user: { username: normalizedUsername, role },
+        user: { name, username: name, role: entry.role },
+
         lastError: null
       })
       return true
     }
-    updateState({ isAuthenticated: false, user: null, lastError: 'Credenciais inválidas' })
+
+    updateState({
+      isAuthenticated: false,
+      user: null,
+      lastError: 'Credenciais inválidas'
+    })
     return false
   }, [updateState])
 
