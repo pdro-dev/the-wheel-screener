@@ -83,12 +83,12 @@ class OpLabAPIClient:
 
         
         try:
-            endpoint = f"{self.base_url}/market/quotes"
+            endpoint = f"{self.base_url}/market/quote"
             payload = {"symbols": symbols}
-            
+
             response = self.session.post(endpoint, json=payload, timeout=10)
             response.raise_for_status()
-            
+
             data = response.json()
             logger.info(f"OpLab API: Retrieved quotes for {len(data.get('quotes', []))} symbols")
             return data
