@@ -71,7 +71,7 @@ export function useOpLabState() {
   }, [updateState])
 
   const login = useCallback((username, password) => {
-    const normalizedUsername = username.trim().toLowerCase()
+    const name = username.trim().toLowerCase()
     const pass = password.trim()
 
     const entry = VALID_USERS[name]
@@ -80,7 +80,6 @@ export function useOpLabState() {
       updateState({
         isAuthenticated: true,
         user: { name, username: name, role: entry.role },
-
         lastError: null
       })
       return true
