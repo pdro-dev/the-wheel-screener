@@ -70,11 +70,16 @@ export function useOpLabState() {
   }, [updateState])
 
   const login = useCallback((username, password) => {
-    const name = username.trim().toLowerCase()
+    const normalizedUsername = username.trim().toLowerCase()
     const pass = password.trim()
-    const validPassword = VALID_USERS[name]
+    const validPassword = VALID_USERS[normalizedUsername]
     if (validPassword && validPassword === pass) {
-      updateState({ isAuthenticated: true, user: { name }, lastError: null })
+      const role = normalizedUsername === 'admin' ? 'admin' : 'user'
+      updateState({
+        isAuthenticated: true,
+        user: { username: normalizedUsername, role },
+        lastError: null
+      })
       return true
     }
     updateState({ isAuthenticated: false, user: null, lastError: 'Credenciais inválidas' })
