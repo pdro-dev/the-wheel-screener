@@ -85,63 +85,62 @@ export function AssetGrid() {
       setError(null)
       
       try {
-        if (isAuthenticated && token && isOnline) {
-          // Try to load real data from API
-          try {
-            const instruments = await getInstruments()
-            const symbols = instruments.slice(0, 50).map(i => i.symbol)
-            const quotes = await getQuotes(symbols)
-            
-            const realAssets = instruments.map((inst, index) => {
-              const quote = quotes.find(q => q.symbol === inst.symbol) || {}
-              return {
-                id: index + 1,
-                symbol: inst.symbol,
-                name: inst.name || `${inst.symbol} S.A.`,
-                price: quote.price || Math.random() * 100 + 10,
-                change: quote.change || (Math.random() - 0.5) * 10,
-                changePercent: quote.changePercent || (Math.random() - 0.5) * 15,
-                volume: quote.volume || Math.floor(Math.random() * 10000000) + 100000,
-                marketCap: quote.marketCap || Math.floor(Math.random() * 100000000000) + 1000000000,
-                dividendYield: quote.dividendYield || Math.random() * 12,
-                sector: inst.sector || 'Financeiro',
-                hasOptions: inst.hasOptions !== undefined ? inst.hasOptions : Math.random() > 0.3,
-                optionVolume: quote.optionVolume || Math.floor(Math.random() * 1000000),
-                pe: quote.pe || Math.random() * 30 + 5,
-                pb: quote.pb || Math.random() * 5 + 0.5,
-                roe: quote.roe || Math.random() * 25 + 5,
-                roic: quote.roic || Math.random() * 20 + 2,
-                debtToEquity: quote.debtToEquity || Math.random() * 2,
-                currentRatio: quote.currentRatio || Math.random() * 3 + 0.5,
-                lastUpdate: new Date()
-              }
-            })
-            
-            setAssets(realAssets)
-            setDataSource('real')
-          } catch (apiError) {
-            console.warn('API failed, falling back to mock data:', apiError)
-            // Fallback to mock data
-            const mockAssets = generateMockAssets()
-            setAssets(mockAssets)
-            setDataSource('mock')
-          }
-        } else {
-          // Use mock data when not authenticated
-          const mockAssets = generateMockAssets()
-          setAssets(mockAssets)
-          setDataSource('mock')
+        // Call instruments API directly
+        const response = await fetch('/api/instruments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({})
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
         }
+
+        const data = await response.json()
+        
+        // Transform API data
+        const realAssets = data.instruments.map((inst, index) => ({
+          id: index + 1,
+          symbol: inst.symbol,
+          name: inst.name || `${inst.symbol} S.A.`,
+          price: inst.price || 0,
+          change: Math.random() * 10 - 5, // Mock for now
+          changePercent: Math.random() * 10 - 5, // Mock for now
+          volume: inst.volume || 0,
+          marketCap: inst.marketCap || 0,
+          dividendYield: Math.random() * 8, // Mock for now
+          sector: inst.sector || 'Financeiro',
+          hasOptions: true, // Assume all have options
+          optionVolume: Math.floor(Math.random() * 1000000),
+          pe: Math.random() * 30 + 5,
+          pb: Math.random() * 5 + 0.5,
+          roe: Math.random() * 25 + 5,
+          roic: Math.random() * 20 + 2,
+          debtToEquity: Math.random() * 2,
+          currentRatio: Math.random() * 3 + 0.5,
+          lastUpdate: new Date()
+        }))
+        
+        setAssets(realAssets)
+        setDataSource('real')
+        
       } catch (err) {
-        setError('Falha ao carregar dados dos ativos')
-        console.error('Error loading assets:', err)
+        console.warn('API failed, falling back to mock data:', err)
+        setError('Falha ao carregar dados dos ativos - usando dados simulados')
+        
+        // Fallback to mock data
+        const mockAssets = generateMockAssets()
+        setAssets(mockAssets)
+        setDataSource('mock')
       } finally {
         setLoading(false)
       }
     }
 
     loadAssets()
-  }, [isAuthenticated, token, isOnline, getInstruments, getQuotes])
+  }, [])
 
   // Get unique sectors
   const sectors = useMemo(() => {

@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # Backend Flask
+  backend:
+    build:
+      context: ./backend-oplab
+      dockerfile: Dockerfile
+    container_name: wheel-screener-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+      - OPLAB_API_TOKEN=${OPLAB_API_TOKEN:-}
+    volumes:
+      - ./backend-oplab/logs:/app/logs
+    networks:
+      - wheel-screener-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend React
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wheel-screener-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - wheel-screener-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis para cache (opcional, para produção)
+  redis:
+    image: redis:7-alpine
+    container_name: wheel-screener-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - wheel-screener-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  wheel-screener-network:
+    driver: bridge
+
+volumes:
+  redis_data:
+    driver: local
+

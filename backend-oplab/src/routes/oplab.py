@@ -751,31 +751,69 @@ def perform_screening():
         # Merge with provided filters
         screening_filters = {**default_filters, **filters}
 
-        # Get instruments (pass filters explicitamente)
-        instruments_response = get_instruments(screening_filters)
-        instruments_data = instruments_response.get_json()
-        instruments = instruments_data['instruments']
+        # Get instruments directly from mock data with filters applied
+        instruments = []
+        for stock in mock_generator.brazilian_stocks:
+            price_data = mock_generator.get_real_stock_data(stock['symbol'])
+            
+            instrument = {
+                'symbol': stock['symbol'],
+                'name': stock['name'],
+                'sector': stock['sector'],
+                'price': price_data['price'],
+                'volume': price_data['volume'],
+                'currency': 'BRL',
+                'exchange': 'B3',
+                'dataSource': price_data['dataSource']
+            }
 
-        # Get quotes for all instruments (pass symbols explicitamente)
-        symbols = [i['symbol'] for i in instruments]
-        quotes_response = get_quotes(symbols)
-        quotes_data = quotes_response.get_json()
-        quotes = quotes_data['quotes']
+            # Apply filters
+            if screening_filters.get('minPrice') and instrument['price'] < screening_filters['minPrice']:
+                continue
+            if screening_filters.get('maxPrice') and instrument['price'] > screening_filters['maxPrice']:
+                continue
+            if screening_filters.get('minVolume') and instrument['volume'] < screening_filters['minVolume']:
+                continue
+            if screening_filters.get('sectors') and screening_filters['sectors'] and instrument['sector'] not in screening_filters['sectors']:
+                continue
+
+            instruments.append(instrument)
 
         # Get fundamentals for all instruments
         results = []
         for instrument in instruments:
             symbol = instrument['symbol']
-
-            # Find corresponding quote
-            quote = next((q for q in quotes if q['symbol'] == symbol), None)
-            if not quote:
+            
+            # Get stock info for fundamentals
+            stock_info = next((s for s in mock_generator.brazilian_stocks if s['symbol'] == symbol), None)
+            if not stock_info:
                 continue
+                
+            # Get price data (already have from instruments)
+            price_data = mock_generator.get_real_stock_data(symbol)
+            
+            # Create quote object
+            quote = {
+                'symbol': symbol,
+                'price': price_data['price'],
+                'volume': price_data['volume'],
+                'change': round(random.uniform(-5, 5), 2),
+                'changePercent': round(random.uniform(-0.08, 0.08), 4),
+                'bid': price_data['price'] * 0.999,
+                'ask': price_data['price'] * 1.001,
+                'high52w': max(price_data['historicalPrices']) if price_data['historicalPrices'] else price_data['price'],
+                'low52w': min(price_data['historicalPrices']) if price_data['historicalPrices'] else price_data['price'],
+                'historicalPrices': price_data['historicalPrices'],
+                'timestamp': datetime.now().isoformat(),
+                'dataSource': price_data['dataSource']
+            }
 
-            # Get fundamentals
-            fundamentals_response = get_fundamentals(symbol)
-            fundamentals_data = fundamentals_response.get_json()
-            fundamental = fundamentals_data['fundamentals']
+            # Generate fundamentals
+            fundamental = mock_generator.generate_fundamentals(symbol, stock_info['sector'])
+
+            # Apply ROIC filter
+            if screening_filters.get('minROIC') and fundamental['roic'] < screening_filters['minROIC']:
+                continue
 
             # Calculate wheel score using the same algorithm as the frontend
             score = calculate_wheel_score(instrument, quote, fundamental, screening_filters)

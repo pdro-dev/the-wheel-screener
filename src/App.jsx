@@ -74,6 +74,7 @@ import { ScreeningUtils } from '@/services/opLabAPI'
 import { AssetGrid } from '@/components/AssetGrid'
 import { OptionsGrid } from '@/components/OptionsGrid'
 import { Login } from '@/components/Login'
+import ScreeningComponent from '@/components/ScreeningComponent'
 
 import './App.css'
 
@@ -334,19 +335,7 @@ function App() {
                 </TabsContent>
 
                 <TabsContent value="screening">
-                  <div className="space-y-6">
-                    {/* Screening content here */}
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-2xl font-bold">Screening de Oportunidades</h2>
-                      <div className="flex space-x-2">
-                        <Button onClick={exportToCSV} variant="outline" size="sm">
-                          <Download className="h-4 w-4 mr-2" />
-                          Exportar CSV
-                        </Button>
-                      </div>
-                    </div>
-                    {/* Add screening filters and results here */}
-                  </div>
+                  <ScreeningComponent />
                 </TabsContent>
 
                 <TabsContent value="ativos">
