@@ -43,35 +43,40 @@ export function useOpLabService() {
   }, [token, isOnline])
 
   const getInstruments = useCallback(async (filters = {}, opts = {}) => {
-    return makeRequest('/market/instruments', {
+    const data = await makeRequest('/market/instruments', {
       method: 'POST',
       body: JSON.stringify(filters),
       ...opts,
     })
+    return data?.instruments ?? data
   }, [makeRequest])
 
   const getQuotes = useCallback(async (symbols, opts = {}) => {
-    return makeRequest('/market/quote', {
+    const data = await makeRequest('/market/quote', {
       method: 'POST',
       body: JSON.stringify({ symbols }),
       ...opts,
     })
+    return data?.quotes ?? data
   }, [makeRequest])
 
   const getFundamentals = useCallback(async (symbol, opts = {}) => {
-    return makeRequest(`/market/fundamentals/${symbol}`, { ...opts })
+    const data = await makeRequest(`/market/fundamentals/${symbol}`, { ...opts })
+    return data?.fundamentals ?? data
   }, [makeRequest])
 
   const getOptions = useCallback(async (symbol, opts = {}) => {
-    return makeRequest(`/market/options/${symbol}`, { ...opts })
+    const data = await makeRequest(`/market/options/${symbol}`, { ...opts })
+    return data?.options ?? data
   }, [makeRequest])
 
   const performScreening = useCallback(async (filters, opts = {}) => {
-    return makeRequest('/screening', {
+    const data = await makeRequest('/screening', {
       method: 'POST',
       body: JSON.stringify(filters),
       ...opts,
     })
+    return data?.results ?? data
   }, [makeRequest])
 
   const checkHealth = useCallback(async (opts = {}) => {
