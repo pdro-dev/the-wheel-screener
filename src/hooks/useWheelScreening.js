@@ -23,32 +23,27 @@ export function useWheelScreening() {
     setError(null)
 
     try {
-      // Step 1: Get instruments (25% progress)
-      setProgress(25)
-      const instruments = await opLabService.getInstruments(filters)
-      
-      if (abortControllerRef.current.signal.aborted) return []
-
-      // Step 2: Get quotes for instruments (50% progress)
+      // Call the screening endpoint directly
       setProgress(50)
-      const symbols = instruments.map(inst => inst.symbol)
-      const quotes = await opLabService.getQuotes(symbols)
-      
-      if (abortControllerRef.current.signal.aborted) return []
-
-      // Step 3: Perform screening analysis (75% progress)
-      setProgress(75)
-      const screeningResults = await opLabService.performScreening({
-        ...filters,
-        instruments,
-        quotes
+      const response = await fetch('/api/screening', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(filters),
+        signal: abortControllerRef.current.signal
       })
       
       if (abortControllerRef.current.signal.aborted) return []
 
-      // Step 4: Format and return results (100% progress)
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data = await response.json()
       setProgress(100)
-      const formattedResults = screeningResults.map(result => ({
+      
+      const formattedResults = data.results.map(result => ({
         ...result,
         timestamp: new Date().toISOString(),
         source: 'api'
@@ -74,7 +69,7 @@ export function useWheelScreening() {
       setIsScreening(false)
       setProgress(0)
     }
-  }, [opLabService])
+  }, [])
 
   const exportResults = useCallback((format = 'csv') => {
     if (results.length === 0) {
