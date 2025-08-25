@@ -39,7 +39,7 @@ class OpLabAPIClient:
 
         if self.token:
             self.session.headers.update({
-                'Authorization': f'Bearer {self.token}',
+                'Access-Token': self.token,
                 'Content-Type': 'application/json',
                 'User-Agent': 'TheWheelScreener/1.0'
             })
@@ -60,10 +60,22 @@ class OpLabAPIClient:
 
         
         try:
+            # Use the instruments endpoint as per documentation
             endpoint = f"{self.base_url}/market/instruments"
-            payload = filters or {}
             
-            response = self.session.post(endpoint, json=payload, timeout=10)
+            # Add query parameters if filters provided
+            params = {}
+            if filters:
+                if 'limit' in filters:
+                    params['limit'] = filters['limit']
+                if 'type' in filters:
+                    params['type'] = filters['type']
+                if 'has_options' in filters:
+                    params['has_options'] = filters['has_options']
+                if 'category' in filters:
+                    params['category'] = filters['category']
+            
+            response = self.session.get(endpoint, params=params, timeout=10)
             response.raise_for_status()
             
             data = response.json()
@@ -83,14 +95,15 @@ class OpLabAPIClient:
 
         
         try:
+            # Use the quote endpoint as per documentation (GET method with query params)
             endpoint = f"{self.base_url}/market/quote"
-            payload = {"symbols": symbols}
-
-            response = self.session.post(endpoint, json=payload, timeout=10)
+            params = {'tickers': ','.join(symbols)}
+            
+            response = self.session.get(endpoint, params=params, timeout=10)
             response.raise_for_status()
-
+            
             data = response.json()
-            logger.info(f"OpLab API: Retrieved quotes for {len(data.get('quotes', []))} symbols")
+            logger.info(f"OpLab API: Retrieved quotes for {len(data)} symbols")
             return data
             
 
@@ -98,6 +111,106 @@ class OpLabAPIClient:
             metrics['oplab_failures'] += 1
             logger.error(f"OpLab API quotes request failed: {str(e)}")
             raise Exception(f"OpLab API quotes request failed: {str(e)}")
+
+    def get_stock_data(self, symbol):
+        """Get individual stock data from OpLab API (as tested in Postman)"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        
+        try:
+            endpoint = f"{self.base_url}/market/stocks/{symbol}"
+            
+            response = self.session.get(endpoint, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved stock data for {symbol}")
+            return data
+            
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API stock data request failed for {symbol}: {str(e)}")
+            raise Exception(f"OpLab API stock data request failed: {str(e)}")
+
+    def get_stocks(self, filters=None):
+        """Get stocks with options from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        
+        try:
+            endpoint = f"{self.base_url}/market/stocks"
+            
+            # Add query parameters if filters provided
+            params = {}
+            if filters:
+                if 'rank_by' in filters:
+                    params['rank_by'] = filters['rank_by']
+                if 'sort' in filters:
+                    params['sort'] = filters['sort']
+                if 'limit' in filters:
+                    params['limit'] = filters['limit']
+                if 'financial_volume_start' in filters:
+                    params['financial_volume_start'] = filters['financial_volume_start']
+            
+            response = self.session.get(endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved {len(data.get('stocks', []))} stocks")
+            return data
+            
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API stocks request failed: {str(e)}")
+            raise Exception(f"OpLab API stocks request failed: {str(e)}")
+
+    def get_options(self, symbol):
+        """Get options for a specific stock from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        
+        try:
+            endpoint = f"{self.base_url}/market/options/{symbol}"
+            
+            response = self.session.get(endpoint, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved options for {symbol}")
+            return data
+            
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API options request failed for {symbol}: {str(e)}")
+            raise Exception(f"OpLab API options request failed: {str(e)}")
+
+    def get_market_status(self):
+        """Get current market status from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        
+        try:
+            endpoint = f"{self.base_url}/market/status"
+            
+            response = self.session.get(endpoint, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info("OpLab API: Retrieved market status")
+            return data
+            
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API market status request failed: {str(e)}")
+            raise Exception(f"OpLab API market status request failed: {str(e)}")
 
     def get_fundamentals(self, symbol):
         """Get fundamental data from OpLab API"""
@@ -142,6 +255,480 @@ class OpLabAPIClient:
             metrics['oplab_failures'] += 1
             logger.error(f"OpLab API user info request failed: {str(e)}")
             raise Exception(f"OpLab API user info request failed: {str(e)}")
+
+    # ===== TAXAS DE JUROS =====
+    def get_interest_rates(self):
+        """Get interest rates from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/interest_rates"
+            response = self.session.get(endpoint, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info("OpLab API: Retrieved interest rates")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API interest rates request failed: {str(e)}")
+            raise Exception(f"OpLab API interest rates request failed: {str(e)}")
+
+    def get_interest_rate(self, rate_id):
+        """Get specific interest rate from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/interest_rates/{rate_id}"
+            response = self.session.get(endpoint, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved interest rate {rate_id}")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API interest rate request failed for {rate_id}: {str(e)}")
+            raise Exception(f"OpLab API interest rate request failed: {str(e)}")
+
+    # ===== BOLSAS DE VALORES =====
+    def get_exchanges(self):
+        """Get exchanges from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/exchanges"
+            response = self.session.get(endpoint, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info("OpLab API: Retrieved exchanges")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API exchanges request failed: {str(e)}")
+            raise Exception(f"OpLab API exchanges request failed: {str(e)}")
+
+    def get_exchange(self, exchange_uid):
+        """Get specific exchange from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/exchanges/{exchange_uid}"
+            response = self.session.get(endpoint, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved exchange {exchange_uid}")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API exchange request failed for {exchange_uid}: {str(e)}")
+            raise Exception(f"OpLab API exchange request failed: {str(e)}")
+
+    # ===== AÇÕES =====
+    def get_stocks_all(self, filters=None):
+        """Get all stocks from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/stocks/all"
+            params = filters or {}
+            response = self.session.get(endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info("OpLab API: Retrieved all stocks")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API all stocks request failed: {str(e)}")
+            raise Exception(f"OpLab API all stocks request failed: {str(e)}")
+
+    # ===== OPÇÕES =====
+    def get_option_details(self, option_symbol):
+        """Get option details from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/options/details/{option_symbol}"
+            response = self.session.get(endpoint, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved option details for {option_symbol}")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API option details request failed for {option_symbol}: {str(e)}")
+            raise Exception(f"OpLab API option details request failed: {str(e)}")
+
+    def get_covered_options(self, underlying_symbols):
+        """Get covered options strategies from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/options/strategies/covered"
+            params = {'underlying': underlying_symbols}
+            response = self.session.get(endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info("OpLab API: Retrieved covered options strategies")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API covered options request failed: {str(e)}")
+            raise Exception(f"OpLab API covered options request failed: {str(e)}")
+
+    def get_black_scholes(self, symbol, irate, option_type, **kwargs):
+        """Get Black-Scholes parameters from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/options/bs"
+            params = {
+                'symbol': symbol,
+                'irate': irate,
+                'type': option_type,
+                **kwargs
+            }
+            response = self.session.get(endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved Black-Scholes for {symbol}")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API Black-Scholes request failed for {symbol}: {str(e)}")
+            raise Exception(f"OpLab API Black-Scholes request failed: {str(e)}")
+
+    def get_options_powders(self):
+        """Get options powders from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/options/powders"
+            response = self.session.get(endpoint, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info("OpLab API: Retrieved options powders")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API options powders request failed: {str(e)}")
+            raise Exception(f"OpLab API options powders request failed: {str(e)}")
+
+    # ===== INSTRUMENTOS =====
+    def get_instrument_series(self, symbol, **kwargs):
+        """Get instrument options series from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/instruments/series/{symbol}"
+            params = kwargs
+            response = self.session.get(endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved instrument series for {symbol}")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API instrument series request failed for {symbol}: {str(e)}")
+            raise Exception(f"OpLab API instrument series request failed: {str(e)}")
+
+    def get_instrument_details(self, symbol):
+        """Get specific instrument details from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/instruments/{symbol}"
+            response = self.session.get(endpoint, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved instrument details for {symbol}")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API instrument details request failed for {symbol}: {str(e)}")
+            raise Exception(f"OpLab API instrument details request failed: {str(e)}")
+
+    # ===== MERCADO =====
+    def get_companies(self, symbols=None, includes=None):
+        """Get companies from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/companies"
+            params = {}
+            if symbols:
+                params['symbols'] = symbols
+            if includes:
+                params['includes'] = includes
+            
+            response = self.session.get(endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info("OpLab API: Retrieved companies")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API companies request failed: {str(e)}")
+            raise Exception(f"OpLab API companies request failed: {str(e)}")
+
+    # ===== RANKINGS =====
+    def get_highest_options_volume(self, order_by='total', limit=20):
+        """Get highest options volume ranking from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/statistics/realtime/highest_options_volume"
+            params = {'order_by': order_by, 'limit': limit}
+            response = self.session.get(endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info("OpLab API: Retrieved highest options volume ranking")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API highest options volume request failed: {str(e)}")
+            raise Exception(f"OpLab API highest options volume request failed: {str(e)}")
+
+    def get_best_covered_options_rates(self, option_type, limit=20):
+        """Get best covered options rates from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/statistics/realtime/best_covered_options_rates/{option_type}"
+            params = {'limit': limit}
+            response = self.session.get(endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved best covered options rates for {option_type}")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API best covered options rates request failed: {str(e)}")
+            raise Exception(f"OpLab API best covered options rates request failed: {str(e)}")
+
+    def get_highest_options_variation(self, option_type, limit=20):
+        """Get highest options variation from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/statistics/realtime/highest_options_variation/{option_type}"
+            params = {'limit': limit}
+            response = self.session.get(endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved highest options variation for {option_type}")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API highest options variation request failed: {str(e)}")
+            raise Exception(f"OpLab API highest options variation request failed: {str(e)}")
+
+    def get_ranking_m9m21(self, limit=20):
+        """Get M9M21 ranking from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/statistics/ranking/m9m21"
+            params = {'limit': limit}
+            response = self.session.get(endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info("OpLab API: Retrieved M9M21 ranking")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API M9M21 ranking request failed: {str(e)}")
+            raise Exception(f"OpLab API M9M21 ranking request failed: {str(e)}")
+
+    def get_ranking_correl_ibov(self, limit=20):
+        """Get IBOV correlation ranking from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/statistics/ranking/correl_ibov"
+            params = {'limit': limit}
+            response = self.session.get(endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info("OpLab API: Retrieved IBOV correlation ranking")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API IBOV correlation ranking request failed: {str(e)}")
+            raise Exception(f"OpLab API IBOV correlation ranking request failed: {str(e)}")
+
+    def get_ranking_by_attribute(self, attribute, limit=20):
+        """Get ranking by fundamental attribute from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/statistics/ranking/{attribute}"
+            params = {'limit': limit}
+            response = self.session.get(endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved ranking by {attribute}")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API ranking by {attribute} request failed: {str(e)}")
+            raise Exception(f"OpLab API ranking by {attribute} request failed: {str(e)}")
+
+    def get_ranking_oplab_score(self, limit=20):
+        """Get OpLab Score ranking from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/statistics/ranking/oplab_score"
+            params = {'limit': limit}
+            response = self.session.get(endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info("OpLab API: Retrieved OpLab Score ranking")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API OpLab Score ranking request failed: {str(e)}")
+            raise Exception(f"OpLab API OpLab Score ranking request failed: {str(e)}")
+
+    # ===== DADOS HISTÓRICOS =====
+    def get_historical_data(self, symbol, resolution, **kwargs):
+        """Get historical data from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/historical/{symbol}/{resolution}"
+            params = kwargs
+            response = self.session.get(endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved historical data for {symbol}")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API historical data request failed for {symbol}: {str(e)}")
+            raise Exception(f"OpLab API historical data request failed: {str(e)}")
+
+    def get_historical_options(self, spot, from_date, to_date, symbol=None):
+        """Get historical options data from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/historical/options/{spot}/{from_date}/{to_date}"
+            params = {}
+            if symbol:
+                params['symbol'] = symbol
+            
+            response = self.session.get(endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved historical options for {spot}")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API historical options request failed for {spot}: {str(e)}")
+            raise Exception(f"OpLab API historical options request failed: {str(e)}")
+
+    def get_historical_instruments(self, tickers, date):
+        """Get historical instruments data from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/market/historical/instruments"
+            params = {'tickers': tickers, 'date': date}
+            response = self.session.get(endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info("OpLab API: Retrieved historical instruments data")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API historical instruments request failed: {str(e)}")
+            raise Exception(f"OpLab API historical instruments request failed: {str(e)}")
+
+    # ===== OUTROS =====
+    def get_business_days_until(self, until_date):
+        """Get business days until a specific date from OpLab API"""
+        if not self.is_available():
+            raise Exception("OpLab API token not configured")
+
+        try:
+            endpoint = f"{self.base_url}/domain/trading/business_days/{until_date}"
+            response = self.session.get(endpoint, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"OpLab API: Retrieved business days until {until_date}")
+            return data
+
+        except requests.exceptions.RequestException as e:
+            metrics['oplab_failures'] += 1
+            logger.error(f"OpLab API business days request failed: {str(e)}")
+            raise Exception(f"OpLab API business days request failed: {str(e)}")
 
 
 # Mock data generators for realistic financial data
@@ -502,6 +1089,768 @@ def get_market_options(symbol):
         }
 
         return jsonify(options_data)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@oplab_bp.route('/market/status', methods=['GET'])
+def get_market_status():
+    """Get market status from OpLab API"""
+    try:
+        # Try OpLab API first
+        if oplab_client.is_available():
+            try:
+                status_data = oplab_client.get_market_status()
+                status_data['dataSource'] = 'oplab'
+                logger.info("Successfully retrieved market status from OpLab API")
+                return jsonify(status_data)
+            except Exception as e:
+                logger.warning(f"OpLab API market status failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_status = {
+            'status': 'open',  # or 'closed' based on time
+            'lastUpdate': datetime.now().isoformat(),
+            'dataSource': 'mock'
+        }
+
+        return jsonify(mock_status)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@oplab_bp.route('/market/stocks/<symbol>', methods=['GET'])
+def get_market_stock(symbol):
+    """Get individual stock data from OpLab API - New /market endpoint"""
+    try:
+        # Try OpLab API first
+        if oplab_client.is_available():
+            try:
+                stock_data = oplab_client.get_stock_data(symbol)
+                stock_data['dataSource'] = 'oplab'
+                logger.info(f"Successfully retrieved stock data for {symbol} from OpLab API")
+                return jsonify(stock_data)
+            except Exception as e:
+                logger.warning(f"OpLab API stock data failed for {symbol}, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        stock_info = next((s for s in mock_generator.brazilian_stocks if s['symbol'] == symbol), None)
+        if not stock_info:
+            return jsonify({'error': 'Symbol not found'}), 404
+
+        price_data = mock_generator.get_real_stock_data(symbol)
+        
+        mock_stock_data = {
+            'symbol': symbol,
+            'name': stock_info['name'],
+            'sector': stock_info['sector'],
+            'price': price_data['price'],
+            'volume': price_data['volume'],
+            'dataSource': price_data['dataSource'],
+            'timestamp': datetime.now().isoformat()
+        }
+
+        return jsonify(mock_stock_data)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@oplab_bp.route('/market/stocks', methods=['GET'])
+def get_market_stocks():
+    """Get stocks with options from OpLab API"""
+    try:
+        filters = request.args.to_dict()
+        
+        # Try OpLab API first
+        if oplab_client.is_available():
+            try:
+                stocks_data = oplab_client.get_stocks(filters)
+                stocks_data['dataSource'] = 'oplab'
+                logger.info(f"Successfully retrieved stocks from OpLab API")
+                return jsonify(stocks_data)
+            except Exception as e:
+                logger.warning(f"OpLab API stocks failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_stocks = []
+        for stock in mock_generator.brazilian_stocks:
+            price_data = mock_generator.get_real_stock_data(stock['symbol'])
+            mock_stocks.append({
+                'symbol': stock['symbol'],
+                'name': stock['name'],
+                'sector': stock['sector'],
+                'price': price_data['price'],
+                'volume': price_data['volume'],
+                'dataSource': price_data['dataSource']
+            })
+
+        return jsonify({
+            'stocks': mock_stocks,
+            'total': len(mock_stocks),
+            'dataSource': 'mock',
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ===== TAXAS DE JUROS =====
+@oplab_bp.route('/market/interest_rates', methods=['GET'])
+def get_interest_rates():
+    """Get interest rates from OpLab API"""
+    try:
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_interest_rates()
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API interest rates failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_rates = [
+            {'uid': 'SELIC', 'name': 'Taxa Selic', 'value': 13.75, 'updated_at': datetime.now().isoformat()},
+            {'uid': 'CDI', 'name': 'CDI', 'value': 13.65, 'updated_at': datetime.now().isoformat()},
+            {'uid': 'IPCA', 'name': 'IPCA', 'value': 4.18, 'updated_at': datetime.now().isoformat()}
+        ]
+        return jsonify({'rates': mock_rates, 'dataSource': 'mock'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@oplab_bp.route('/market/interest_rates/<rate_id>', methods=['GET'])
+def get_interest_rate(rate_id):
+    """Get specific interest rate from OpLab API"""
+    try:
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_interest_rate(rate_id)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API interest rate failed for {rate_id}, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_rate = {
+            'uid': rate_id,
+            'name': f'Taxa {rate_id}',
+            'value': 13.75 if rate_id == 'SELIC' else 13.65,
+            'updated_at': datetime.now().isoformat(),
+            'dataSource': 'mock'
+        }
+        return jsonify(mock_rate)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ===== BOLSAS DE VALORES =====
+@oplab_bp.route('/market/exchanges', methods=['GET'])
+def get_exchanges():
+    """Get exchanges from OpLab API"""
+    try:
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_exchanges()
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API exchanges failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_exchanges = [
+            {'uid': 'B3', 'name': 'B3 S.A.', 'country': 'Brasil', 'timezone': 'America/Sao_Paulo'},
+            {'uid': 'NYSE', 'name': 'New York Stock Exchange', 'country': 'Estados Unidos', 'timezone': 'America/New_York'}
+        ]
+        return jsonify({'exchanges': mock_exchanges, 'dataSource': 'mock'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@oplab_bp.route('/market/exchanges/<exchange_uid>', methods=['GET'])
+def get_exchange(exchange_uid):
+    """Get specific exchange from OpLab API"""
+    try:
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_exchange(exchange_uid)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API exchange failed for {exchange_uid}, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_exchange = {
+            'uid': exchange_uid,
+            'name': f'Exchange {exchange_uid}',
+            'country': 'Brasil',
+            'timezone': 'America/Sao_Paulo',
+            'dataSource': 'mock'
+        }
+        return jsonify(mock_exchange)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ===== AÇÕES =====
+@oplab_bp.route('/market/stocks/all', methods=['GET'])
+def get_stocks_all():
+    """Get all stocks from OpLab API"""
+    try:
+        filters = request.args.to_dict()
+        
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_stocks_all(filters)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API all stocks failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_stocks = []
+        for stock in mock_generator.brazilian_stocks:
+            price_data = mock_generator.get_real_stock_data(stock['symbol'])
+            mock_stocks.append({
+                'symbol': stock['symbol'],
+                'name': stock['name'],
+                'sector': stock['sector'],
+                'price': price_data['price'],
+                'volume': price_data['volume'],
+                'dataSource': price_data['dataSource']
+            })
+
+        return jsonify({
+            'stocks': mock_stocks,
+            'total': len(mock_stocks),
+            'dataSource': 'mock',
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ===== OPÇÕES =====
+@oplab_bp.route('/market/options/details/<option_symbol>', methods=['GET'])
+def get_option_details(option_symbol):
+    """Get option details from OpLab API"""
+    try:
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_option_details(option_symbol)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API option details failed for {option_symbol}, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_option = {
+            'symbol': option_symbol,
+            'strike': 50.0,
+            'expiry': '2024-12-20',
+            'type': 'CALL',
+            'underlying': 'PETR4',
+            'dataSource': 'mock'
+        }
+        return jsonify(mock_option)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@oplab_bp.route('/market/options/strategies/covered', methods=['GET'])
+def get_covered_options():
+    """Get covered options strategies from OpLab API"""
+    try:
+        underlying = request.args.get('underlying', '')
+        
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_covered_options(underlying)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API covered options failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_strategies = [
+            {
+                'underlying': 'PETR4',
+                'strike': 45.0,
+                'premium': 2.50,
+                'return_rate': 5.56,
+                'dataSource': 'mock'
+            }
+        ]
+        return jsonify({'strategies': mock_strategies, 'dataSource': 'mock'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@oplab_bp.route('/market/options/bs', methods=['GET'])
+def get_black_scholes():
+    """Get Black-Scholes parameters from OpLab API"""
+    try:
+        symbol = request.args.get('symbol')
+        irate = request.args.get('irate')
+        option_type = request.args.get('type')
+        
+        if not all([symbol, irate, option_type]):
+            return jsonify({'error': 'symbol, irate, and type are required'}), 400
+        
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_black_scholes(symbol, irate, option_type, **request.args.to_dict())
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API Black-Scholes failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_bs = {
+            'symbol': symbol,
+            'theoretical_price': 2.50,
+            'delta': 0.65,
+            'gamma': 0.02,
+            'theta': -0.05,
+            'vega': 0.15,
+            'rho': 0.03,
+            'dataSource': 'mock'
+        }
+        return jsonify(mock_bs)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@oplab_bp.route('/market/options/powders', methods=['GET'])
+def get_options_powders():
+    """Get options powders from OpLab API"""
+    try:
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_options_powders()
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API options powders failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_powders = [
+            {
+                'symbol': 'PETR4',
+                'strike': 45.0,
+                'premium': 2.50,
+                'return_rate': 5.56,
+                'dataSource': 'mock'
+            }
+        ]
+        return jsonify({'powders': mock_powders, 'dataSource': 'mock'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ===== INSTRUMENTOS =====
+@oplab_bp.route('/market/instruments/series/<symbol>', methods=['GET'])
+def get_instrument_series(symbol):
+    """Get instrument options series from OpLab API"""
+    try:
+        params = request.args.to_dict()
+        
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_instrument_series(symbol, **params)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API instrument series failed for {symbol}, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_series = [
+            {
+                'strike': 45.0,
+                'expiry': '2024-12-20',
+                'call_symbol': f'{symbol}C45',
+                'put_symbol': f'{symbol}P45',
+                'dataSource': 'mock'
+            }
+        ]
+        return jsonify({'series': mock_series, 'dataSource': 'mock'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@oplab_bp.route('/market/instruments/<symbol>', methods=['GET'])
+def get_instrument_details(symbol):
+    """Get specific instrument details from OpLab API"""
+    try:
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_instrument_details(symbol)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API instrument details failed for {symbol}, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        price_data = mock_generator.get_real_stock_data(symbol)
+        mock_instrument = {
+            'symbol': symbol,
+            'name': f'Instrument {symbol}',
+            'price': price_data['price'],
+            'volume': price_data['volume'],
+            'dataSource': price_data['dataSource']
+        }
+        return jsonify(mock_instrument)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ===== MERCADO =====
+@oplab_bp.route('/market/companies', methods=['GET'])
+def get_companies():
+    """Get companies from OpLab API"""
+    try:
+        symbols = request.args.get('symbols')
+        includes = request.args.get('includes')
+        
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_companies(symbols, includes)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API companies failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_companies = [
+            {
+                'symbol': 'PETR4',
+                'name': 'Petrobras',
+                'sector': 'Energy',
+                'dataSource': 'mock'
+            }
+        ]
+        return jsonify({'companies': mock_companies, 'dataSource': 'mock'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ===== RANKINGS =====
+@oplab_bp.route('/market/statistics/realtime/highest_options_volume', methods=['GET'])
+def get_highest_options_volume():
+    """Get highest options volume ranking from OpLab API"""
+    try:
+        order_by = request.args.get('order_by', 'total')
+        limit = int(request.args.get('limit', 20))
+        
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_highest_options_volume(order_by, limit)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API highest options volume failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_ranking = [
+            {
+                'symbol': 'PETR4',
+                'volume': 15000,
+                'order_by': order_by,
+                'dataSource': 'mock'
+            }
+        ]
+        return jsonify({'ranking': mock_ranking, 'dataSource': 'mock'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@oplab_bp.route('/market/statistics/realtime/best_covered_options_rates/<option_type>', methods=['GET'])
+def get_best_covered_options_rates(option_type):
+    """Get best covered options rates from OpLab API"""
+    try:
+        limit = int(request.args.get('limit', 20))
+        
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_best_covered_options_rates(option_type, limit)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API best covered options rates failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_rates = [
+            {
+                'symbol': 'PETR4',
+                'strike': 45.0,
+                'return_rate': 5.56,
+                'type': option_type,
+                'dataSource': 'mock'
+            }
+        ]
+        return jsonify({'rates': mock_rates, 'dataSource': 'mock'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@oplab_bp.route('/market/statistics/realtime/highest_options_variation/<option_type>', methods=['GET'])
+def get_highest_options_variation(option_type):
+    """Get highest options variation from OpLab API"""
+    try:
+        limit = int(request.args.get('limit', 20))
+        
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_highest_options_variation(option_type, limit)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API highest options variation failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_variations = [
+            {
+                'symbol': 'PETR4',
+                'variation': 15.5,
+                'type': option_type,
+                'dataSource': 'mock'
+            }
+        ]
+        return jsonify({'variations': mock_variations, 'dataSource': 'mock'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@oplab_bp.route('/market/statistics/ranking/m9m21', methods=['GET'])
+def get_ranking_m9m21():
+    """Get M9M21 ranking from OpLab API"""
+    try:
+        limit = int(request.args.get('limit', 20))
+        
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_ranking_m9m21(limit)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API M9M21 ranking failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_ranking = [
+            {
+                'symbol': 'PETR4',
+                'm9': 45.0,
+                'm21': 42.0,
+                'signal': 'BUY',
+                'dataSource': 'mock'
+            }
+        ]
+        return jsonify({'ranking': mock_ranking, 'dataSource': 'mock'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@oplab_bp.route('/market/statistics/ranking/correl_ibov', methods=['GET'])
+def get_ranking_correl_ibov():
+    """Get IBOV correlation ranking from OpLab API"""
+    try:
+        limit = int(request.args.get('limit', 20))
+        
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_ranking_correl_ibov(limit)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API IBOV correlation ranking failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_ranking = [
+            {
+                'symbol': 'PETR4',
+                'correlation': 0.85,
+                'dataSource': 'mock'
+            }
+        ]
+        return jsonify({'ranking': mock_ranking, 'dataSource': 'mock'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@oplab_bp.route('/market/statistics/ranking/<attribute>', methods=['GET'])
+def get_ranking_by_attribute(attribute):
+    """Get ranking by fundamental attribute from OpLab API"""
+    try:
+        limit = int(request.args.get('limit', 20))
+        
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_ranking_by_attribute(attribute, limit)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API ranking by {attribute} failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_ranking = [
+            {
+                'symbol': 'PETR4',
+                'attribute': attribute,
+                'value': 15.5,
+                'dataSource': 'mock'
+            }
+        ]
+        return jsonify({'ranking': mock_ranking, 'dataSource': 'mock'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@oplab_bp.route('/market/statistics/ranking/oplab_score', methods=['GET'])
+def get_ranking_oplab_score():
+    """Get OpLab Score ranking from OpLab API"""
+    try:
+        limit = int(request.args.get('limit', 20))
+        
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_ranking_oplab_score(limit)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API OpLab Score ranking failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_ranking = [
+            {
+                'symbol': 'PETR4',
+                'score': 85,
+                'dataSource': 'mock'
+            }
+        ]
+        return jsonify({'ranking': mock_ranking, 'dataSource': 'mock'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ===== DADOS HISTÓRICOS =====
+@oplab_bp.route('/market/historical/<symbol>/<resolution>', methods=['GET'])
+def get_historical_data(symbol, resolution):
+    """Get historical data from OpLab API"""
+    try:
+        params = request.args.to_dict()
+        
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_historical_data(symbol, resolution, **params)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API historical data failed for {symbol}, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_historical = [
+            {
+                'date': '2024-01-01',
+                'open': 45.0,
+                'high': 46.0,
+                'low': 44.0,
+                'close': 45.5,
+                'volume': 1000000,
+                'dataSource': 'mock'
+            }
+        ]
+        return jsonify({'data': mock_historical, 'dataSource': 'mock'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@oplab_bp.route('/market/historical/options/<spot>/<from_date>/<to_date>', methods=['GET'])
+def get_historical_options(spot, from_date, to_date):
+    """Get historical options data from OpLab API"""
+    try:
+        symbol = request.args.get('symbol')
+        
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_historical_options(spot, from_date, to_date, symbol)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API historical options failed for {spot}, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_historical = [
+            {
+                'date': '2024-01-01',
+                'symbol': 'PETRC45',
+                'strike': 45.0,
+                'premium': 2.50,
+                'dataSource': 'mock'
+            }
+        ]
+        return jsonify({'data': mock_historical, 'dataSource': 'mock'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@oplab_bp.route('/market/historical/instruments', methods=['GET'])
+def get_historical_instruments():
+    """Get historical instruments data from OpLab API"""
+    try:
+        tickers = request.args.get('tickers')
+        date = request.args.get('date')
+        
+        if not tickers or not date:
+            return jsonify({'error': 'tickers and date are required'}), 400
+        
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_historical_instruments(tickers, date)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API historical instruments failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_historical = [
+            {
+                'symbol': 'PETR4',
+                'date': date,
+                'open': 45.0,
+                'high': 46.0,
+                'low': 44.0,
+                'close': 45.5,
+                'volume': 1000000,
+                'dataSource': 'mock'
+            }
+        ]
+        return jsonify({'data': mock_historical, 'dataSource': 'mock'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ===== OUTROS =====
+@oplab_bp.route('/domain/trading/business_days/<until_date>', methods=['GET'])
+def get_business_days_until(until_date):
+    """Get business days until a specific date from OpLab API"""
+    try:
+        if oplab_client.is_available():
+            try:
+                data = oplab_client.get_business_days_until(until_date)
+                data['dataSource'] = 'oplab'
+                return jsonify(data)
+            except Exception as e:
+                logger.warning(f"OpLab API business days failed, falling back to mock: {str(e)}")
+
+        # Fallback to mock data
+        mock_business_days = {
+            'business_days': 26,
+            'until_date': until_date,
+            'dataSource': 'mock'
+        }
+        return jsonify(mock_business_days)
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

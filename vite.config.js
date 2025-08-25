@@ -1,15 +1,15 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(),tailwindcss()],
-  base: '/the-wheel-screener/',
+  plugins: [react(), tailwindcss()],
+  base: "/the-wheel-screener/",
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -17,14 +17,14 @@ export default defineConfig({
   },
   server: {
     host: true,
-    allowedHosts: ['all'],
+    allowedHosts: ["all"],
     proxy: {
-      '/api': {
-        target: process.env.BACKEND_URL || 'http://localhost:5000',
+      "/api": {
+        target: process.env.BACKEND_URL || "http://backend-dev:5000",
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api/, '/api')
-      }
-    }
-  }
-})
+        rewrite: (path) => path.replace(/^\/api/, "/api"),
+      },
+    },
+  },
+});
