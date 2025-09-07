@@ -2336,24 +2336,17 @@ def calculate_volatility(prices):
     if len(prices) < 2:
         return 0.5
 
-
-    returns = []
-    for i in range(1, len(prices)):
-        if prices[i-1] == 0:
-            continue
     epsilon = 1e-8
     returns = []
     for i in range(1, len(prices)):
         denom = max(abs(prices[i-1]), epsilon)
         returns.append((prices[i] - prices[i-1]) / denom)
 
-
     if not returns:
         return 0.5
 
     mean_return = sum(returns) / len(returns)
     variance = sum((r - mean_return) ** 2 for r in returns) / len(returns)
-
 
     return (variance ** 0.5) * (252 ** 0.5)  # Annualized
 
