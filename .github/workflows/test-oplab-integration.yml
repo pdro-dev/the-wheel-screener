@@ -74,15 +74,26 @@ jobs:
       - name: Run Backend Server Test
         run: |
           cd backend-oplab
-          timeout 30s python src/main.py &
-          sleep 10
-          
+          python src/main.py & SERVER_PID=$!
+
+          for i in {1..20}; do
+            if curl --silent --fail http://localhost:5000/api/health >/dev/null; then
+              echo "Server ready"; break
+            fi
+            sleep 2
+            if [ $i -eq 20 ]; then
+              echo "Server failed to start"; kill $SERVER_PID; exit 1
+            fi
+          done
+
           # Test health endpoint
           curl -f http://localhost:5000/api/health || echo "Health check failed"
-          
+
           # Test metrics endpoint
           curl -f http://localhost:5000/api/metrics || echo "Metrics check failed"
-          
+
+          kill $SERVER_PID || true
+
           echo "✅ Backend server tests completed"
 
   test-frontend:
@@ -139,15 +150,22 @@ jobs:
       - name: Run integration tests
         run: |
           echo "🚀 Starting integration tests..."
-          
+
           # Start backend
           cd backend-oplab
-          python src/main.py &
-          BACKEND_PID=$!
+          python src/main.py & SERVER_PID=$!
           cd ..
-          
+
           # Wait for backend to start
-          sleep 10
+          for i in {1..20}; do
+            if curl --silent --fail http://localhost:5000/api/health >/dev/null; then
+              echo "Server ready"; break
+            fi
+            sleep 2
+            if [ $i -eq 20 ]; then
+              echo "Server failed to start"; kill $SERVER_PID; exit 1
+            fi
+          done
           
           # Test API endpoints
           echo "Testing API endpoints..."
@@ -156,10 +174,10 @@ jobs:
           
           # Build frontend
           npm run build
-          
+
           # Cleanup
-          kill $BACKEND_PID || true
-          
+          kill $SERVER_PID || true
+
           echo "✅ Integration tests completed successfully"
 
 
