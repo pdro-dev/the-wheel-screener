@@ -31,7 +31,7 @@ jobs:
       #   version: 10.4.1
         
     - name: Setup Node.js
-      uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.0
+      uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v4.0.0
       with:
         node-version: '20'
         cache: 'pnpm'
